@@ -1,0 +1,83 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import * as SecureStore from 'expo-secure-store';
+import { DroneProfile } from '../types';
+import dronePresetsData from '../constants/dronePresets.json';
+
+const secureStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch (e) {
+      console.warn('SecureStore setItem failed', e);
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      // ignore
+    }
+  },
+};
+
+const dronePresets: DroneProfile[] = dronePresetsData as DroneProfile[];
+
+interface DroneState {
+  profiles: DroneProfile[];
+  activeDroneId: string;
+  setActiveDrone: (id: string) => void;
+  addProfile: (profile: DroneProfile) => void;
+  updateProfile: (id: string, updates: Partial<DroneProfile>) => void;
+  deleteProfile: (id: string) => void;
+  duplicatePreset: (id: string) => void;
+}
+
+export const useDroneStore = create<DroneState>()(
+  persist(
+    (set, get) => ({
+      profiles: dronePresets,
+      activeDroneId: dronePresets[0].id,
+      setActiveDrone: (id) => set({ activeDroneId: id }),
+      addProfile: (profile) => set((s) => ({ profiles: [...s.profiles, profile] })),
+      updateProfile: (id, updates) =>
+        set((s) => ({
+          profiles: s.profiles.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+        })),
+      deleteProfile: (id) =>
+        set((s) => {
+          const newProfiles = s.profiles.filter((p) => p.id !== id);
+          const newActiveId =
+            s.activeDroneId === id ? (newProfiles[0]?.id ?? '') : s.activeDroneId;
+          return { profiles: newProfiles, activeDroneId: newActiveId };
+        }),
+      duplicatePreset: (id) => {
+        const original = get().profiles.find((p) => p.id === id);
+        if (!original) return;
+        const newProfile: DroneProfile = {
+          ...original,
+          id: `custom-${Date.now()}`,
+          name: `${original.name} (Custom)`,
+          isPreset: false,
+        };
+        set((s) => ({ profiles: [...s.profiles, newProfile] }));
+      },
+    }),
+    {
+      name: 'dronecast-drones',
+      storage: createJSONStorage(() => secureStorage),
+      // Only persist custom profiles + activeDroneId; presets are always from JSON
+      partialize: (s) => ({
+        profiles: s.profiles,
+        activeDroneId: s.activeDroneId,
+      }),
+    }
+  )
+);
