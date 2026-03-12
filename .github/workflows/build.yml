@@ -54,6 +54,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: drone-weather-app-${{ github.ref_name }}-${{ github.run_number }}
+          name: drone-weather-app-${{ replace(github.ref_name, '/', '-') }}-${{ github.run_number }}
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
