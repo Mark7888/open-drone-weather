@@ -140,7 +140,7 @@ export default function CalendarScreen() {
     const summary = daySummaries.get(dateStr);
     const past = isPastDay(date);
     const isToday = isSameDay(date, today);
-    const hasWeather = !!summary;
+    const hasWeather = !!summary && summary.hourScores.length > 0;
     const beyond16Days = !hasWeather && !past;
 
     // Compute gradient stops from hourly scores
