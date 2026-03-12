@@ -19,18 +19,17 @@ export async function fetchWeather(lat: number, lon: number, locationName: strin
     longitude: lon.toFixed(6),
     hourly: [
       'temperature_2m',
-      'relativehumidity_2m',
+      'relative_humidity_2m',
       'precipitation_probability',
       'precipitation',
-      'weathercode',
-      'cloudcover',
+      'weather_code',
+      'cloud_cover',
       'visibility',
-      'windspeed_10m',
-      'windspeed_80m',
-      'windspeed_120m',
-      'windgusts_10m',
-      'windgusts_80m',
-      'winddirection_80m',
+      'wind_speed_10m',
+      'wind_speed_80m',
+      'wind_speed_120m',
+      'wind_gusts_10m',
+      'wind_direction_80m',
     ].join(','),
     timezone: 'auto',
     forecast_days: '16',
@@ -38,7 +37,7 @@ export async function fetchWeather(lat: number, lon: number, locationName: strin
     temperature_unit: 'celsius',
   });
 
-  const url = `${BASE_URL}?${params.toString()}`;
+  const url = `${BASE_URL}?${params.toString().replace(/%2C/gi, ',')}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Weather API error: ${response.status}`);
@@ -54,18 +53,18 @@ function parseResponse(json: any, lat: number, lon: number, locationName: string
   const hourly: HourlyWeather[] = times.map((time: string, i: number) => ({
     time,
     temperature: h.temperature_2m[i] ?? 0,
-    humidity: h.relativehumidity_2m[i] ?? 0,
+    humidity: h.relative_humidity_2m[i] ?? 0,
     precipitationProbability: h.precipitation_probability[i] ?? 0,
     precipitation: h.precipitation[i] ?? 0,
-    weatherCode: h.weathercode[i] ?? 0,
-    cloudCover: h.cloudcover[i] ?? 0,
+    weatherCode: h.weather_code[i] ?? 0,
+    cloudCover: h.cloud_cover[i] ?? 0,
     visibility: h.visibility[i] ?? 10000,
-    windSpeed10m: h.windspeed_10m[i] ?? 0,
-    windSpeed80m: h.windspeed_80m[i] ?? 0,
-    windSpeed120m: h.windspeed_120m[i] ?? 0,
-    windGust10m: h.windgusts_10m[i] ?? 0,
-    windGust80m: h.windgusts_80m[i] ?? 0,
-    windDirection80m: h.winddirection_80m[i] ?? 0,
+    windSpeed10m: h.wind_speed_10m[i] ?? 0,
+    windSpeed80m: h.wind_speed_80m[i] ?? 0,
+    windSpeed120m: h.wind_speed_120m[i] ?? 0,
+    windGust10m: h.wind_gusts_10m[i] ?? 0,
+    windGust80m: h.wind_gusts_10m[i] ?? 0,  // API no longer provides gusts at 80m; use surface gusts as proxy
+    windDirection80m: h.wind_direction_80m[i] ?? 0,
   }));
 
   return {
