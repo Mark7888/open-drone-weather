@@ -1,4 +1,4 @@
-import { ScoreColors } from '../theme/colors';
+import { ScoreColors } from '../../theme/colors';
 
 export function scoreToColor(score: number): string {
   if (score >= 85) return ScoreColors.excellent;
