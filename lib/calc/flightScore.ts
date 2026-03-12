@@ -203,13 +203,34 @@ export function scoreDay(
   hourlyWeather: HourlyWeather[],
   drone: DroneProfile,
   lat: number,
-  lon: number
+  lon: number,
+  nightFlyingEnabled: boolean = true
 ): DaySummary {
   const date = new Date(dateStr + 'T12:00:00');
   const sunTimes = getSunTimes(date, lat, lon);
 
   const dayHourly = hourlyWeather.filter((h) => h.time.startsWith(dateStr));
-  const hourScores = dayHourly.map((h) => scoreHour(h, drone));
+  const rawHourScores = dayHourly.map((h) => scoreHour(h, drone));
+
+  // When night flying is disabled, block all hours outside dawn–dusk
+  const dawnHour = sunTimes.dawn.getHours();
+  const duskHour = sunTimes.dusk.getHours();
+  const hourScores = nightFlyingEnabled
+    ? rawHourScores
+    : rawHourScores.map((hs) => {
+        if (hs.hour < dawnHour || hs.hour > duskHour) {
+          return {
+            ...hs,
+            score: 0,
+            blocked: true,
+            blockerReasons: [
+              { factor: 'Night flying disabled', rawValue: hs.hour, threshold: dawnHour, unit: 'h' },
+            ],
+            factorBreakdown: [],
+          };
+        }
+        return hs;
+      });
 
   const sunriseHour = sunTimes.sunrise.getHours();
   const sunsetHour = sunTimes.sunset.getHours();
@@ -276,8 +297,10 @@ export function scoreDay(
 /**
  * Returns the "best day" across an array of DaySummary values —
  * the day with the highest average score between sunrise and sunset.
+ * Returns null if no day meets the minimum quality threshold (score >= 40).
  */
 export function getBestDay(summaries: DaySummary[]): DaySummary | null {
+  const MINIMUM_BEST_DAY_SCORE = 40;
   let best: DaySummary | null = null;
   let bestAvg = -1;
 
@@ -295,5 +318,35 @@ export function getBestDay(summaries: DaySummary[]): DaySummary | null {
     }
   }
 
+  // Only show a "best day" if it genuinely meets the minimum quality bar
+  if (bestAvg < MINIMUM_BEST_DAY_SCORE) return null;
   return best;
+}
+
+/**
+ * Returns days with average daytime score >= threshold, sorted by score descending,
+ * excluding the bestDay. These are "also good" days to fly.
+ */
+export function getGoodDays(
+  summaries: DaySummary[],
+  bestDay: DaySummary | null,
+  threshold: number = 65
+): DaySummary[] {
+  const good: Array<{ summary: DaySummary; avg: number }> = [];
+
+  for (const summary of summaries) {
+    if (bestDay && summary.date === bestDay.date) continue;
+    const sunriseHour = summary.sunrise.getHours();
+    const sunsetHour = summary.sunset.getHours();
+    const daytime = summary.hourScores.filter(
+      (h) => h.hour >= sunriseHour && h.hour <= sunsetHour
+    );
+    if (daytime.length === 0) continue;
+    const avg = daytime.reduce((s, h) => s + h.score, 0) / daytime.length;
+    if (avg >= threshold) {
+      good.push({ summary, avg });
+    }
+  }
+
+  return good.sort((a, b) => b.avg - a.avg).map((g) => g.summary);
 }

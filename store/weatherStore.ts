@@ -15,8 +15,12 @@ interface WeatherState {
 }
 
 function makeKey(lat: number, lon: number): string {
-  return `${lat.toFixed(4)}_${lon.toFixed(4)}`;
+  // 2 decimal places matches cache key precision
+  return `${lat.toFixed(2)}_${lon.toFixed(2)}`;
 }
+
+// Module-level lock prevents duplicate concurrent fetches for the same location
+let activeFetchKey: string | null = null;
 
 async function doFetch(location: SavedLocation): Promise<WeatherData> {
   return fetchWeather(location.lat, location.lon, location.customName ?? location.placeName);
@@ -60,7 +64,10 @@ export const useWeatherStore = create<WeatherState>()((set, get) => ({
       }
     }
 
-    // Always attempt background fetch
+    // Prevent duplicate concurrent background fetches for the same key
+    if (activeFetchKey === key) return;
+    activeFetchKey = key;
+
     set({ isLoading: true, error: null });
     try {
       const fresh = await doFetch(location);
@@ -74,6 +81,8 @@ export const useWeatherStore = create<WeatherState>()((set, get) => ({
       });
     } catch (e: any) {
       set({ isLoading: false, error: e?.message ?? 'Failed to fetch weather' });
+    } finally {
+      if (activeFetchKey === key) activeFetchKey = null;
     }
   },
 

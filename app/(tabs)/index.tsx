@@ -17,7 +17,7 @@ import { useDroneStore } from '../../store/droneStore';
 import { useLocationStore, GPS_LOCATION } from '../../store/locationStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getColors } from '../../theme/colors';
-import { scoreDay, getBestDay } from '../../lib/calc/flightScore';
+import { scoreDay, getBestDay, getGoodDays } from '../../lib/calc/flightScore';
 import { getMondayOfWeek, toDateString, addDays, isPastDay, isSameDay, formatDateLong, formatCacheTime } from '../../lib/utils/time';
 import { scoreToColor } from '../../lib/utils/scoreColors';
 import { DaySummary, SavedLocation } from '../../types';
@@ -36,6 +36,7 @@ export default function CalendarScreen() {
   const router = useRouter();
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
+  const nightFlyingEnabled = useSettingsStore((s) => s.nightFlyingEnabled);
   const colors = getColors(themeOverride, systemScheme);
 
   const weatherData = useWeatherStore((s) => s.data);
@@ -114,11 +115,11 @@ export default function CalendarScreen() {
     const map = new Map<string, DaySummary>();
     for (const date of gridDates) {
       const dateStr = toDateString(date);
-      const summary = scoreDay(dateStr, weatherData.hourly, activeDrone, weatherData.location.lat, weatherData.location.lon);
+      const summary = scoreDay(dateStr, weatherData.hourly, activeDrone, weatherData.location.lat, weatherData.location.lon, nightFlyingEnabled);
       map.set(dateStr, summary);
     }
     return map;
-  }, [weatherData, activeDrone]);
+  }, [weatherData, activeDrone, nightFlyingEnabled]);
 
   // Best day
   const bestDay = useMemo(() => {
@@ -127,6 +128,14 @@ export default function CalendarScreen() {
     );
     return getBestDay(summaries);
   }, [daySummaries]);
+
+  // Other good days (score avg >= 65, excluding best day)
+  const goodDays = useMemo(() => {
+    const summaries = Array.from(daySummaries.values()).filter(
+      (s) => !isPastDay(new Date(s.date + 'T00:00:00'))
+    );
+    return getGoodDays(summaries, bestDay);
+  }, [daySummaries, bestDay]);
 
   const hasData = weatherData !== null;
   const noDataAndNoConnection = !hasData && isOffline && !isLoading;
@@ -259,7 +268,7 @@ export default function CalendarScreen() {
                 style={[styles.dronePickerItem, { borderBottomColor: colors.border }]}
                 onPress={() => {
                   useDroneStore.getState().setActiveDrone(p.id);
-                  setDronePickerOpen(false);
+                  // Keep the dropdown open so the user sees their selection
                 }}
               >
                 <Text style={[styles.dronePickerText, { color: p.id === activeDroneId ? colors.tabBarActive : colors.textPrimary }]}>
@@ -328,7 +337,7 @@ export default function CalendarScreen() {
           ))}
         </View>
 
-        {/* Best day banner */}
+        {/* Best day banner + good days list */}
         <View style={[styles.bestDayBanner, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           {bestDay ? (
             <View style={styles.bestDayContent}>
@@ -344,8 +353,24 @@ export default function CalendarScreen() {
             <View style={styles.bestDayContent}>
               <MaterialCommunityIcons name="weather-cloudy" size={16} color={colors.textSecondary} />
               <Text style={[styles.bestDayText, { color: colors.textSecondary }]}>
-                No ideal day found this forecast period
+                None of the days are good to fly
               </Text>
+            </View>
+          )}
+
+          {goodDays.length > 0 && (
+            <View style={styles.goodDaysList}>
+              <Text style={[styles.goodDaysHeader, { color: colors.textSecondary }]}>
+                Also good to fly:
+              </Text>
+              {goodDays.map((day) => (
+                <View key={day.date} style={styles.goodDayRow}>
+                  <MaterialCommunityIcons name="check-circle-outline" size={13} color="#4CAF50" />
+                  <Text style={[styles.goodDayText, { color: colors.textPrimary }]}>
+                    {formatDateLong(new Date(day.date + 'T12:00:00'))}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -475,6 +500,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bestDayText: { fontSize: 13 },
+  goodDaysList: {
+    marginTop: 10,
+    gap: 4,
+  },
+  goodDaysHeader: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  goodDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  goodDayText: { fontSize: 13 },
   noDataContainer: {
     flex: 1,
     alignItems: 'center',

@@ -77,10 +77,19 @@ export const useLocationStore = create<LocationState>()(
         })),
       updateGPSCoords: (lat, lon, placeName) =>
         set((s) => {
-          if (s.active?.isGPS) {
-            return { active: { ...s.active, lat, lon, placeName } };
+          if (!s.active?.isGPS) return s;
+          const prev = s.active;
+          // Only update coords if they've changed significantly (>= 0.01° ≈ 1 km).
+          // This prevents spurious re-fetches caused by GPS measurement noise.
+          const coordsUnchanged =
+            prev.lat !== 0 &&
+            Math.abs(prev.lat - lat) < 0.01 &&
+            Math.abs(prev.lon - lon) < 0.01;
+          if (coordsUnchanged) {
+            // Update the display name only
+            return prev.placeName !== placeName ? { active: { ...prev, placeName } } : s;
           }
-          return s;
+          return { active: { ...prev, lat, lon, placeName } };
         }),
     }),
     {

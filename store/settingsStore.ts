@@ -33,11 +33,13 @@ interface SettingsState {
   units: UnitsSettings;
   themeOverride: ThemeOverride;
   goldenHourEnabled: boolean;
+  nightFlyingEnabled: boolean;
   setTemperatureUnit: (unit: UnitsSettings['temperature']) => void;
   setWindUnit: (unit: UnitsSettings['wind']) => void;
   setDistanceUnit: (unit: UnitsSettings['distance']) => void;
   setThemeOverride: (override: ThemeOverride) => void;
   setGoldenHourEnabled: (enabled: boolean) => void;
+  setNightFlyingEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -46,11 +48,13 @@ export const useSettingsStore = create<SettingsState>()(
       units: { temperature: 'C', wind: 'kmh', distance: 'km' },
       themeOverride: 'system',
       goldenHourEnabled: true,
+      nightFlyingEnabled: false,
       setTemperatureUnit: (unit) => set((s) => ({ units: { ...s.units, temperature: unit } })),
       setWindUnit: (unit) => set((s) => ({ units: { ...s.units, wind: unit } })),
       setDistanceUnit: (unit) => set((s) => ({ units: { ...s.units, distance: unit } })),
       setThemeOverride: (override) => set({ themeOverride: override }),
       setGoldenHourEnabled: (enabled) => set({ goldenHourEnabled: enabled }),
+      setNightFlyingEnabled: (enabled) => set({ nightFlyingEnabled: enabled }),
     }),
     {
       name: 'dronecast-settings',

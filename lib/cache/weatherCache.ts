@@ -2,12 +2,13 @@ import { File, Directory, Paths } from 'expo-file-system';
 import { WeatherData } from '../../types';
 
 function locationKey(lat: number, lon: number): string {
-  return `${lat.toFixed(4)}_${lon.toFixed(4)}`;
+  // 2 decimal places ≈ 1km precision — prevents cache misses from GPS drift
+  return `${lat.toFixed(2)}_${lon.toFixed(2)}`;
 }
 
 function cacheFileName(lat: number, lon: number): string {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  return `weather_${locationKey(lat, lon)}_${today}.json`;
+  // No date in filename — cache is valid across days; freshness is managed via fetchedAt
+  return `weather_${locationKey(lat, lon)}.json`;
 }
 
 function getCacheFile(lat: number, lon: number): File {

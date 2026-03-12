@@ -37,6 +37,7 @@ export default function DayDetailScreen() {
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
   const goldenHourEnabled = useSettingsStore((s) => s.goldenHourEnabled);
+  const nightFlyingEnabled = useSettingsStore((s) => s.nightFlyingEnabled);
   const units = useSettingsStore((s) => s.units);
   const colors = getColors(themeOverride, systemScheme);
 
@@ -61,8 +62,8 @@ export default function DayDetailScreen() {
 
   const summary = useMemo(() => {
     if (!weatherData || !activeDrone || !dateStr) return null;
-    return scoreDay(dateStr, weatherData.hourly, activeDrone, weatherData.location.lat, weatherData.location.lon);
-  }, [weatherData, activeDrone, dateStr]);
+    return scoreDay(dateStr, weatherData.hourly, activeDrone, weatherData.location.lat, weatherData.location.lon, nightFlyingEnabled);
+  }, [weatherData, activeDrone, dateStr, nightFlyingEnabled]);
 
   const pointerY = useSharedValue(
     summary ? (pointerHour / 24) * STRIP_HEIGHT : STRIP_HEIGHT * 0.5
@@ -179,13 +180,13 @@ export default function DayDetailScreen() {
 
           {/* Night overlays */}
           {/* Pre-dawn */}
-          <View style={[styles.nightOverlay, { top: 0, height: dawnY, opacity: 0.4 }]} />
+          <View style={[styles.nightOverlay, { top: 0, height: dawnY, opacity: nightFlyingEnabled ? 0.4 : 0.85 }]} />
           {/* Dawn to sunrise */}
-          <View style={[styles.nightOverlay, { top: dawnY, height: Math.max(0, sunriseY - dawnY), opacity: 0.2 }]} />
+          <View style={[styles.nightOverlay, { top: dawnY, height: Math.max(0, sunriseY - dawnY), opacity: nightFlyingEnabled ? 0.2 : 0 }]} />
           {/* Sunset to dusk */}
-          <View style={[styles.nightOverlay, { top: sunsetY, height: Math.max(0, duskY - sunsetY), opacity: 0.2 }]} />
+          <View style={[styles.nightOverlay, { top: sunsetY, height: Math.max(0, duskY - sunsetY), opacity: nightFlyingEnabled ? 0.2 : 0 }]} />
           {/* Post-dusk */}
-          <View style={[styles.nightOverlay, { top: duskY, height: Math.max(0, STRIP_HEIGHT - duskY), opacity: 0.4 }]} />
+          <View style={[styles.nightOverlay, { top: duskY, height: Math.max(0, STRIP_HEIGHT - duskY), opacity: nightFlyingEnabled ? 0.4 : 0.85 }]} />
 
           {/* Sun event markers */}
           <SunMarker y={sunriseY} label={`Sunrise ${formatTime(summary.sunrise)}`} icon="weather-sunset-up" color="#FFD54F" />

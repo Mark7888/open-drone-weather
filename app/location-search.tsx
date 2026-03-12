@@ -44,6 +44,7 @@ export default function LocationSearchScreen() {
   const [searching, setSearching] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -65,6 +66,8 @@ export default function LocationSearchScreen() {
   }, [query]);
 
   async function selectGPS() {
+    if (gpsLoading) return;
+    setGpsLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       const gpsLoc: SavedLocation = { ...GPS_LOCATION };
@@ -79,6 +82,8 @@ export default function LocationSearchScreen() {
     } catch {
       setActive(GPS_LOCATION);
       router.back();
+    } finally {
+      setGpsLoading(false);
     }
   }
 
@@ -176,17 +181,22 @@ export default function LocationSearchScreen() {
           <View>
             {/* GPS row */}
             <TouchableOpacity
-              style={[styles.gpsRow, { borderBottomColor: colors.border }]}
+              style={[styles.gpsRow, { borderBottomColor: colors.border, opacity: gpsLoading ? 0.6 : 1 }]}
               onPress={selectGPS}
+              disabled={gpsLoading}
             >
               <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.tabBarActive} />
               <View style={styles.gpsTextContainer}>
                 <Text style={[styles.gpsPrimary, { color: colors.textPrimary }]}>My Location (GPS)</Text>
-                <Text style={[styles.gpsSecondary, { color: colors.textSecondary }]}>Use current location</Text>
+                <Text style={[styles.gpsSecondary, { color: colors.textSecondary }]}>
+                  {gpsLoading ? 'Getting location…' : 'Use current location'}
+                </Text>
               </View>
-              {active?.isGPS && (
+              {gpsLoading ? (
+                <ActivityIndicator size="small" color={colors.tabBarActive} />
+              ) : active?.isGPS ? (
                 <MaterialCommunityIcons name="check" size={18} color={colors.tabBarActive} />
-              )}
+              ) : null}
             </TouchableOpacity>
 
             {/* Search results or saved header */}

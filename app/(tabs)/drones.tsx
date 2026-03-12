@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDroneStore } from '../../store/droneStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -38,6 +39,7 @@ export default function DronesScreen() {
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
   const colors = getColors(themeOverride, systemScheme);
+  const insets = useSafeAreaInsets();
 
   const profiles = useDroneStore((s) => s.profiles);
   const activeDroneId = useDroneStore((s) => s.activeDroneId);
@@ -50,6 +52,15 @@ export default function DronesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldPositions = useRef<Record<string, number>>({});
+
+  function scrollToField(label: string) {
+    const y = fieldPositions.current[label] ?? 0;
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+    }, 200);
+  }
 
   const presets = profiles.filter((p) => p.isPreset);
   const customs = profiles.filter((p) => !p.isPreset);
@@ -212,9 +223,13 @@ export default function DronesScreen() {
       >
         <KeyboardAvoidingView
           style={[styles.modal, { backgroundColor: colors.background }]}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
         >
-          <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <View style={[
+            styles.modalHeader,
+            { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: insets.top > 0 ? insets.top + 8 : 16 },
+          ]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
@@ -226,20 +241,24 @@ export default function DronesScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalBody}>
-            <FormField label="Name" value={form.name} onChangeText={(t) => setForm((f) => ({ ...f, name: t }))} colors={colors} />
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={styles.modalBody}
+            keyboardShouldPersistTaps="handled"
+          >
+            <FormField label="Name" value={form.name} onChangeText={(t) => setForm((f) => ({ ...f, name: t }))} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
             <SectionDivider label="Wind Limits (km/h)" colors={colors} />
-            <NumField label="Max Wind at 10m" value={form.maxWindSpeed10m} onChange={(t) => setNum('maxWindSpeed10m', t)} colors={colors} />
-            <NumField label="Max Wind at 80m" value={form.maxWindSpeed80m} onChange={(t) => setNum('maxWindSpeed80m', t)} colors={colors} />
-            <NumField label="Max Wind at 120m" value={form.maxWindSpeed120m} onChange={(t) => setNum('maxWindSpeed120m', t)} colors={colors} />
-            <NumField label="Max Gust at 80m" value={form.maxGustSpeed} onChange={(t) => setNum('maxGustSpeed', t)} colors={colors} />
+            <NumField label="Max Wind at 10m" value={form.maxWindSpeed10m} onChange={(t) => setNum('maxWindSpeed10m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label="Max Wind at 80m" value={form.maxWindSpeed80m} onChange={(t) => setNum('maxWindSpeed80m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label="Max Wind at 120m" value={form.maxWindSpeed120m} onChange={(t) => setNum('maxWindSpeed120m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label="Max Gust at 80m" value={form.maxGustSpeed} onChange={(t) => setNum('maxGustSpeed', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
             <SectionDivider label="Temperature (°C)" colors={colors} />
-            <NumField label="Min Temperature" value={form.minTemperature} onChange={(t) => setNum('minTemperature', t)} colors={colors} />
-            <NumField label="Max Temperature" value={form.maxTemperature} onChange={(t) => setNum('maxTemperature', t)} colors={colors} />
-            <NumField label="Optimal Temp Min" value={form.optimalTempMin} onChange={(t) => setNum('optimalTempMin', t)} colors={colors} />
-            <NumField label="Optimal Temp Max" value={form.optimalTempMax} onChange={(t) => setNum('optimalTempMax', t)} colors={colors} />
+            <NumField label="Min Temperature" value={form.minTemperature} onChange={(t) => setNum('minTemperature', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label="Max Temperature" value={form.maxTemperature} onChange={(t) => setNum('maxTemperature', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label="Optimal Temp Min" value={form.optimalTempMin} onChange={(t) => setNum('optimalTempMin', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label="Optimal Temp Max" value={form.optimalTempMax} onChange={(t) => setNum('optimalTempMax', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
             <SectionDivider label="Other" colors={colors} />
-            <NumField label="Max Humidity (%)" value={form.maxHumidity} onChange={(t) => setNum('maxHumidity', t)} colors={colors} />
+            <NumField label="Max Humidity (%)" value={form.maxHumidity} onChange={(t) => setNum('maxHumidity', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -247,30 +266,65 @@ export default function DronesScreen() {
   );
 }
 
-function FormField({ label, value, onChangeText, colors }: { label: string; value: string; onChangeText: (t: string) => void; colors: any }) {
+function FormField({ label, value, onChangeText, colors, onFocused, fieldPositions }: {
+  label: string;
+  value: string;
+  onChangeText: (t: string) => void;
+  colors: any;
+  onFocused: (label: string) => void;
+  fieldPositions: React.MutableRefObject<Record<string, number>>;
+}) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={[formStyles.row, { borderBottomColor: colors.border }]}>
+    <View
+      style={[formStyles.row, { borderBottomColor: colors.border }]}
+      onLayout={(e) => { fieldPositions.current[label] = e.nativeEvent.layout.y; }}
+    >
       <Text style={[formStyles.label, { color: colors.textSecondary }]}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        style={[formStyles.input, { color: colors.textPrimary }]}
+        style={[
+          formStyles.input,
+          { color: colors.textPrimary, borderColor: focused ? colors.tabBarActive : colors.border },
+        ]}
         placeholderTextColor={colors.textSecondary}
+        returnKeyType="done"
+        onFocus={() => { setFocused(true); onFocused(label); }}
+        onBlur={() => setFocused(false)}
       />
     </View>
   );
 }
 
-function NumField({ label, value, onChange, colors }: { label: string; value: number; onChange: (t: string) => void; colors: any }) {
+function NumField({ label, value, onChange, colors, onFocused, fieldPositions }: {
+  label: string;
+  value: number;
+  onChange: (t: string) => void;
+  colors: any;
+  onFocused: (label: string) => void;
+  fieldPositions: React.MutableRefObject<Record<string, number>>;
+}) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={[formStyles.row, { borderBottomColor: colors.border }]}>
+    <View
+      style={[formStyles.row, { borderBottomColor: colors.border }]}
+      onLayout={(e) => { fieldPositions.current[label] = e.nativeEvent.layout.y; }}
+    >
       <Text style={[formStyles.label, { color: colors.textSecondary }]}>{label}</Text>
       <TextInput
         value={String(value)}
         onChangeText={onChange}
         keyboardType="numeric"
-        style={[formStyles.input, { color: colors.textPrimary }]}
+        selectTextOnFocus
+        style={[
+          formStyles.input,
+          { color: colors.textPrimary, borderColor: focused ? colors.tabBarActive : colors.border },
+        ]}
         placeholderTextColor={colors.textSecondary}
+        returnKeyType="done"
+        onFocus={() => { setFocused(true); onFocused(label); }}
+        onBlur={() => setFocused(false)}
       />
     </View>
   );
@@ -288,11 +342,19 @@ const formStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   label: { fontSize: 14, flex: 1 },
-  input: { fontSize: 14, textAlign: 'right', minWidth: 80 },
+  input: {
+    fontSize: 15,
+    textAlign: 'right',
+    minWidth: 90,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 6,
+  },
   sectionDivider: {
     fontSize: 12,
     fontWeight: '600',

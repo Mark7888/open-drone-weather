@@ -21,7 +21,7 @@ import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
   const systemScheme = useColorScheme();
-  const { themeOverride, goldenHourEnabled, units, setThemeOverride, setGoldenHourEnabled, setTemperatureUnit, setWindUnit, setDistanceUnit } = useSettingsStore();
+  const { themeOverride, goldenHourEnabled, nightFlyingEnabled, units, setThemeOverride, setGoldenHourEnabled, setNightFlyingEnabled, setTemperatureUnit, setWindUnit, setDistanceUnit } = useSettingsStore();
   const colors = getColors(themeOverride, systemScheme);
   const lastFetched = useWeatherStore((s) => s.lastFetched);
 
@@ -86,6 +86,20 @@ export default function SettingsScreen() {
           <Switch
             value={goldenHourEnabled}
             onValueChange={setGoldenHourEnabled}
+            trackColor={{ true: colors.tabBarActive }}
+          />
+        </View>
+
+        <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Enable Night Flying</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+              When off, night hours are blocked
+            </Text>
+          </View>
+          <Switch
+            value={nightFlyingEnabled}
+            onValueChange={setNightFlyingEnabled}
             trackColor={{ true: colors.tabBarActive }}
           />
         </View>
