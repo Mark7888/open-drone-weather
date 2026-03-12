@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,8 +53,20 @@ export default function DronesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const fieldPositions = useRef<Record<string, number>>({});
+
+  React.useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   function scrollToField(label: string) {
     const y = fieldPositions.current[label] ?? 0;
@@ -218,13 +231,13 @@ export default function DronesScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
           style={[styles.modal, { backgroundColor: colors.background }]}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
           <View style={[
             styles.modalHeader,
@@ -243,8 +256,12 @@ export default function DronesScreen() {
 
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={styles.modalBody}
+            contentContainerStyle={[
+              styles.modalBody,
+              { paddingBottom: keyboardVisible ? 24 : Math.max(40, insets.bottom + 16) },
+            ]}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           >
             <FormField label="Name" value={form.name} onChangeText={(t) => setForm((f) => ({ ...f, name: t }))} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
             <SectionDivider label="Wind Limits (km/h)" colors={colors} />

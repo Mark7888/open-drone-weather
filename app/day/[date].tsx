@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -40,6 +41,7 @@ export default function DayDetailScreen() {
   const nightFlyingEnabled = useSettingsStore((s) => s.nightFlyingEnabled);
   const units = useSettingsStore((s) => s.units);
   const colors = getColors(themeOverride, systemScheme);
+  const insets = useSafeAreaInsets();
 
   const weatherData = useWeatherStore((s) => s.data);
   const profiles = useDroneStore((s) => s.profiles);
@@ -158,7 +160,11 @@ export default function DayDetailScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} scrollEventThrottle={16}>
+      <ScrollView
+        style={styles.scrollView}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 12) }}
+      >
         {/* Timeline Strip */}
         <View style={[styles.stripContainer, { height: STRIP_HEIGHT }]}>
           {/* Gradient segments */}
@@ -450,7 +456,7 @@ const styles = StyleSheet.create({
   },
   dataPanel: {
     borderTopWidth: 1,
-    paddingBottom: 32,
+    paddingBottom: 16,
   },
   overallScoreRow: {
     flexDirection: 'row',
