@@ -1,7 +1,22 @@
 import { WeatherData, HourlyWeather } from '../../types';
 
 const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
-const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  type: string;
+  address: {
+    city?: string;
+    town?: string;
+    village?: string;
+    country?: string;
+    country_code?: string;
+  };
+}
 
 export interface GeocodingResult {
   id: number;
@@ -76,9 +91,19 @@ function parseResponse(json: any, lat: number, lon: number, locationName: string
 
 export async function searchLocations(query: string): Promise<GeocodingResult[]> {
   if (!query.trim()) return [];
-  const params = new URLSearchParams({ name: query.trim(), count: '10' });
-  const response = await fetch(`${GEOCODING_URL}?${params.toString()}`);
+  const params = new URLSearchParams({ q: query.trim(), format: 'json', limit: '10', addressdetails: '1' });
+  const response = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
+    headers: { 'Accept-Language': 'en', 'User-Agent': 'drone-weather-app' },
+  });
   if (!response.ok) return [];
-  const json = await response.json();
-  return (json.results ?? []) as GeocodingResult[];
+  const json: NominatimResult[] = await response.json();
+  return json.map((item) => ({
+    id: item.place_id,
+    name: item.display_name.split(',')[0].trim(),
+    country: item.address.country ?? '',
+    country_code: item.address.country_code?.toUpperCase() ?? '',
+    latitude: parseFloat(item.lat),
+    longitude: parseFloat(item.lon),
+    admin1: item.address.city ?? item.address.town ?? item.address.village,
+  }));
 }
