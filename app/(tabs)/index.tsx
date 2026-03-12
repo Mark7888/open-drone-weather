@@ -152,9 +152,22 @@ export default function CalendarScreen() {
     const hasWeather = !!summary && summary.hourScores.length > 0;
     const beyond16Days = !hasWeather && !past;
 
-    // Compute gradient stops from hourly scores
+    // Compute gradient stops from hourly scores.
+    // When night flying is disabled, only render the daytime hours (dawn–dusk)
+    // and let them stretch (flex: 1 each) to fill the full rectangle height.
     const gradientColors = summary
-      ? summary.hourScores.map((h) => scoreToColor(h.score))
+      ? nightFlyingEnabled
+        ? summary.hourScores.map((h) => scoreToColor(h.score))
+        : (() => {
+            const dawnHour = summary.dawn.getHours();
+            const duskHour = summary.dusk.getHours();
+            const daytime = summary.hourScores.filter(
+              (h) => h.hour >= dawnHour && h.hour <= duskHour
+            );
+            return daytime.length > 0
+              ? daytime.map((h) => scoreToColor(h.score))
+              : summary.hourScores.map((h) => scoreToColor(h.score));
+          })()
       : null;
 
     const interactive = !past && hasWeather;

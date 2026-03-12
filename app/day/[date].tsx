@@ -178,14 +178,8 @@ export default function DayDetailScreen() {
             ))}
           </View>
 
-          {/* Night overlays */}
-          {/* Pre-dawn */}
+          {/* Night overlays — solid blocks from midnight-to-dawn and dusk-to-midnight */}
           <View style={[styles.nightOverlay, { top: 0, height: dawnY, opacity: nightFlyingEnabled ? 0.4 : 0.85 }]} />
-          {/* Dawn to sunrise */}
-          <View style={[styles.nightOverlay, { top: dawnY, height: Math.max(0, sunriseY - dawnY), opacity: nightFlyingEnabled ? 0.2 : 0 }]} />
-          {/* Sunset to dusk */}
-          <View style={[styles.nightOverlay, { top: sunsetY, height: Math.max(0, duskY - sunsetY), opacity: nightFlyingEnabled ? 0.2 : 0 }]} />
-          {/* Post-dusk */}
           <View style={[styles.nightOverlay, { top: duskY, height: Math.max(0, STRIP_HEIGHT - duskY), opacity: nightFlyingEnabled ? 0.4 : 0.85 }]} />
 
           {/* Sun event markers */}
