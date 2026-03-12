@@ -51,9 +51,13 @@ jobs:
           cd android
           ./gradlew assembleRelease --no-daemon
 
+      - name: Sanitize branch name
+        id: sanitize
+        run: echo "branch=$(echo '${{ github.ref_name }}' | sed 's/\//-/g')" >> $GITHUB_OUTPUT
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: drone-weather-app-${{ replace(github.ref_name, '/', '-') }}-${{ github.run_number }}
+          name: drone-weather-app-${{ steps.sanitize.outputs.branch }}-${{ github.run_number }}
           path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
