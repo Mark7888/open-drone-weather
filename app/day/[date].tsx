@@ -87,14 +87,15 @@ export default function DayDetailScreen() {
     [STRIP_HEIGHT]
   );
 
-  const dragStartY = useSharedValue(0);
-
   const panGesture = Gesture.Pan()
-    .onBegin(() => {
-      dragStartY.value = pointerY.value;
+    .minDistance(0)
+    .onBegin((e) => {
+      const newY = Math.max(0, Math.min(STRIP_HEIGHT, e.y));
+      pointerY.value = newY;
+      runOnJS(updatePointerFromY)(newY);
     })
     .onUpdate((e) => {
-      const newY = Math.max(0, Math.min(STRIP_HEIGHT, dragStartY.value + e.translationY));
+      const newY = Math.max(0, Math.min(STRIP_HEIGHT, e.y));
       pointerY.value = newY;
       runOnJS(updatePointerFromY)(newY);
     });
@@ -169,6 +170,7 @@ export default function DayDetailScreen() {
         contentContainerStyle={{ paddingBottom: Math.max(20, insets.bottom + 12) }}
       >
         {/* Timeline Strip */}
+        <GestureDetector gesture={panGesture}>
         <View style={[styles.stripContainer, { height: STRIP_HEIGHT }]}>
           {/* Gradient segments */}
           <View style={styles.stripGradient}>
@@ -204,16 +206,15 @@ export default function DayDetailScreen() {
             </>
           )}
 
-          {/* Draggable pointer */}
-          <GestureDetector gesture={panGesture}>
-            <Animated.View style={[styles.pointerContainer, pointerStyle]}>
-              <Text style={styles.pointerTimeLabel}>
-                {String(pointerHour).padStart(2, '0')}:{String(pointerMinute).padStart(2, '0')}
-              </Text>
-              <View style={[styles.pointerLine, { backgroundColor: '#FFFFFF' }]} />
-            </Animated.View>
-          </GestureDetector>
+          {/* Pointer */}
+          <Animated.View style={[styles.pointerContainer, pointerStyle]}>
+            <Text style={styles.pointerTimeLabel}>
+              {String(pointerHour).padStart(2, '0')}:{String(pointerMinute).padStart(2, '0')}
+            </Text>
+            <View style={[styles.pointerLine, { backgroundColor: '#FFFFFF' }]} />
+          </Animated.View>
         </View>
+        </GestureDetector>
 
         {/* Data Panel */}
         <View style={[styles.dataPanel, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
