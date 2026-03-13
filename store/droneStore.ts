@@ -28,8 +28,10 @@ const secureStorage = {
   },
 };
 
-const dronePresets: DroneProfile[] = dronePresetsData as DroneProfile[];
-const defaultActiveDroneId = dronePresets[0]?.id ?? '';
+const allPresetsData: DroneProfile[] = dronePresetsData as DroneProfile[];
+const dronePresets: DroneProfile[] = allPresetsData.filter((p) => p.isPreset);
+const defaultCustomProfiles: DroneProfile[] = allPresetsData.filter((p) => !p.isPreset);
+const defaultActiveDroneId = dronePresets[0]?.id ?? defaultCustomProfiles[0]?.id ?? '';
 
 function getCustomProfiles(profiles: DroneProfile[] = []): DroneProfile[] {
   return profiles.filter((profile) => !profile.isPreset);
@@ -60,7 +62,7 @@ interface DroneState {
 export const useDroneStore = create<DroneState>()(
   persist(
     (set, get) => ({
-      profiles: dronePresets,
+      profiles: buildProfiles(defaultCustomProfiles),
       activeDroneId: defaultActiveDroneId,
       setActiveDrone: (id) => set({ activeDroneId: id }),
       addProfile: (profile) => set((s) => ({ profiles: [...s.profiles, profile] })),
@@ -92,7 +94,12 @@ export const useDroneStore = create<DroneState>()(
       storage: createJSONStorage(() => secureStorage),
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<DroneState> | undefined;
-        const customProfiles = getCustomProfiles(Array.isArray(persisted?.profiles) ? persisted.profiles : []);
+        // First run (nothing persisted yet): seed with non-preset defaults from JSON.
+        // Subsequent runs: use only what was persisted (respects deletions/edits).
+        const customProfiles =
+          persisted?.profiles === undefined
+            ? defaultCustomProfiles
+            : getCustomProfiles(Array.isArray(persisted.profiles) ? persisted.profiles : []);
         const profiles = buildProfiles(customProfiles);
 
         return {
