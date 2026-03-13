@@ -31,6 +31,9 @@
       "expo-router",
       "expo-secure-store",
       "expo-font"
-    ]
+    ],
+    "buildCacheProvider": {
+      "plugin": "expo-build-disk-cache"
+    }
   }
 }

@@ -36,6 +36,7 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "@types/suncalc": "^1.9.2",
+    "expo-build-disk-cache": "^0.7.3",
     "typescript": "~5.9.2"
   },
   "private": true
