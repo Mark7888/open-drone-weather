@@ -31,6 +31,9 @@ import { HourScore, FactorScore, BlockerReason } from '../../types';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STRIP_HEIGHT = SCREEN_HEIGHT * 0.45;
 const STRIP_WIDTH = SCREEN_WIDTH;
+const POINTER_CONTAINER_HEIGHT = 28;
+const POINTER_LINE_HEIGHT = 2;
+const POINTER_LINE_OFFSET = (POINTER_CONTAINER_HEIGHT - POINTER_LINE_HEIGHT) / 2;
 
 export default function DayDetailScreen() {
   const { date: dateStr } = useLocalSearchParams<{ date: string }>();
@@ -97,7 +100,7 @@ export default function DayDetailScreen() {
     });
 
   const pointerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: pointerY.value }],
+    transform: [{ translateY: pointerY.value - POINTER_LINE_OFFSET }],
   }));
 
   if (!summary || !activeDrone) {
@@ -434,7 +437,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: 28,
+    height: POINTER_CONTAINER_HEIGHT,
     justifyContent: 'center',
   },
   pointerTimeLabel: {
@@ -449,9 +452,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   pointerLine: {
-    height: 2,
+    height: POINTER_LINE_HEIGHT,
     ...StyleSheet.absoluteFillObject,
-    top: 13,
+    top: POINTER_LINE_OFFSET,
     opacity: 0.9,
   },
   dataPanel: {
