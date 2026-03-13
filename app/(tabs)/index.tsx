@@ -37,6 +37,7 @@ export default function CalendarScreen() {
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
   const nightFlyingEnabled = useSettingsStore((s) => s.nightFlyingEnabled);
+  const hideDronePresets = useSettingsStore((s) => s.hideDronePresets);
   const colors = getColors(themeOverride, systemScheme);
 
   const weatherData = useWeatherStore((s) => s.data);
@@ -49,6 +50,7 @@ export default function CalendarScreen() {
   const profiles = useDroneStore((s) => s.profiles);
   const activeDroneId = useDroneStore((s) => s.activeDroneId);
   const activeDrone = profiles.find((p) => p.id === activeDroneId) ?? profiles[0];
+  const visibleProfiles = hideDronePresets ? profiles.filter((p) => !p.isPreset) : profiles;
 
   const activeLocation = useLocationStore((s) => s.active);
   const setActive = useLocationStore((s) => s.setActive);
@@ -275,7 +277,7 @@ export default function CalendarScreen() {
         {/* Drone Picker Dropdown */}
         {dronePickerOpen && (
           <View style={[styles.dronePicker, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
-            {profiles.map((p) => (
+            {visibleProfiles.map((p) => (
               <TouchableOpacity
                 key={p.id}
                 style={[styles.dronePickerItem, { borderBottomColor: colors.border }]}
