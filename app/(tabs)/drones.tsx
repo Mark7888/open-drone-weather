@@ -39,6 +39,7 @@ const EMPTY_FORM: FormState = {
 export default function DronesScreen() {
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
+  const hideDronePresets = useSettingsStore((s) => s.hideDronePresets);
   const colors = getColors(themeOverride, systemScheme);
   const insets = useSafeAreaInsets();
 
@@ -77,6 +78,8 @@ export default function DronesScreen() {
 
   const presets = profiles.filter((p) => p.isPreset);
   const customs = profiles.filter((p) => !p.isPreset);
+  const activeProfile = profiles.find((p) => p.id === activeDroneId) ?? null;
+  const activePresetHidden = hideDronePresets && activeProfile?.isPreset;
 
   function openCreate() {
     setEditingId(null);
@@ -212,8 +215,12 @@ export default function DronesScreen() {
       </View>
 
       <ScrollView>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>Presets</Text>
-        {presets.map(renderPreset)}
+        {!hideDronePresets && presets.length > 0 && (
+          <>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>Presets</Text>
+            {presets.map(renderPreset)}
+          </>
+        )}
 
         {customs.length > 0 && (
           <>
@@ -222,9 +229,23 @@ export default function DronesScreen() {
           </>
         )}
 
-        <Text style={[styles.hint, { color: colors.textSecondary }]}>
-          Long-press a preset to duplicate it as a custom profile.
-        </Text>
+        {activePresetHidden && (
+          <Text style={[styles.hint, { color: colors.textSecondary }]}> 
+            {activeProfile?.name} is still selected, but built-in presets are hidden in Settings.
+          </Text>
+        )}
+
+        {!hideDronePresets && presets.length > 0 && (
+          <Text style={[styles.hint, { color: colors.textSecondary }]}> 
+            Long-press a preset to duplicate it as a custom profile.
+          </Text>
+        )}
+
+        {hideDronePresets && customs.length === 0 && (
+          <Text style={[styles.hint, { color: colors.textSecondary }]}> 
+            Built-in DJI presets are hidden. Create a custom profile or re-enable presets in Settings.
+          </Text>
+        )}
       </ScrollView>
 
       {/* Create / Edit Modal */}

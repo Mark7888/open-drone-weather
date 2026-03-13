@@ -21,7 +21,20 @@ import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
   const systemScheme = useColorScheme();
-  const { themeOverride, goldenHourEnabled, nightFlyingEnabled, units, setThemeOverride, setGoldenHourEnabled, setNightFlyingEnabled, setTemperatureUnit, setWindUnit, setDistanceUnit } = useSettingsStore();
+  const {
+    themeOverride,
+    goldenHourEnabled,
+    nightFlyingEnabled,
+    hideDronePresets,
+    units,
+    setThemeOverride,
+    setGoldenHourEnabled,
+    setNightFlyingEnabled,
+    setHideDronePresets,
+    setTemperatureUnit,
+    setWindUnit,
+    setDistanceUnit,
+  } = useSettingsStore();
   const colors = getColors(themeOverride, systemScheme);
   const lastFetched = useWeatherStore((s) => s.lastFetched);
 
@@ -100,6 +113,20 @@ export default function SettingsScreen() {
           <Switch
             value={nightFlyingEnabled}
             onValueChange={setNightFlyingEnabled}
+            trackColor={{ true: colors.tabBarActive }}
+          />
+        </View>
+
+        <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Hide Drone Presets</Text>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+              Hide built-in DJI presets in the Drone Profiles tab
+            </Text>
+          </View>
+          <Switch
+            value={hideDronePresets}
+            onValueChange={setHideDronePresets}
             trackColor={{ true: colors.tabBarActive }}
           />
         </View>

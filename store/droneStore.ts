@@ -29,6 +29,23 @@ const secureStorage = {
 };
 
 const dronePresets: DroneProfile[] = dronePresetsData as DroneProfile[];
+const defaultActiveDroneId = dronePresets[0]?.id ?? '';
+
+function getCustomProfiles(profiles: DroneProfile[] = []): DroneProfile[] {
+  return profiles.filter((profile) => !profile.isPreset);
+}
+
+function buildProfiles(customProfiles: DroneProfile[]): DroneProfile[] {
+  return [...dronePresets, ...customProfiles];
+}
+
+function resolveActiveDroneId(activeDroneId: string | undefined, profiles: DroneProfile[]): string {
+  if (activeDroneId && profiles.some((profile) => profile.id === activeDroneId)) {
+    return activeDroneId;
+  }
+
+  return profiles[0]?.id ?? '';
+}
 
 interface DroneState {
   profiles: DroneProfile[];
@@ -44,7 +61,7 @@ export const useDroneStore = create<DroneState>()(
   persist(
     (set, get) => ({
       profiles: dronePresets,
-      activeDroneId: dronePresets[0].id,
+      activeDroneId: defaultActiveDroneId,
       setActiveDrone: (id) => set({ activeDroneId: id }),
       addProfile: (profile) => set((s) => ({ profiles: [...s.profiles, profile] })),
       updateProfile: (id, updates) =>
@@ -73,9 +90,19 @@ export const useDroneStore = create<DroneState>()(
     {
       name: 'dronecast-drones',
       storage: createJSONStorage(() => secureStorage),
-      // Only persist custom profiles + activeDroneId; presets are always from JSON
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<DroneState> | undefined;
+        const customProfiles = getCustomProfiles(Array.isArray(persisted?.profiles) ? persisted.profiles : []);
+        const profiles = buildProfiles(customProfiles);
+
+        return {
+          ...currentState,
+          profiles,
+          activeDroneId: resolveActiveDroneId(persisted?.activeDroneId, profiles),
+        };
+      },
       partialize: (s) => ({
-        profiles: s.profiles,
+        profiles: getCustomProfiles(s.profiles),
         activeDroneId: s.activeDroneId,
       }),
     }
