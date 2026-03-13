@@ -15,8 +15,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  runOnJS,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useWeatherStore } from '../../store/weatherStore';
 import { useDroneStore } from '../../store/droneStore';
@@ -26,7 +26,7 @@ import { scoreDay } from '../../lib/calc/flightScore';
 import { scoreToColor, scoreToLabel } from '../../lib/utils/scoreColors';
 import { fromDateString, formatDateLong, formatTime, hourFraction } from '../../lib/utils/time';
 import { convertTemperature, temperatureLabel, convertWind, windLabel, formatVisibility } from '../../lib/utils/units';
-import { HourScore, FactorScore, BlockerReason } from '../../types';
+import { FactorScore, BlockerReason } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STRIP_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -92,12 +92,12 @@ export default function DayDetailScreen() {
     .onBegin((e) => {
       const newY = Math.max(0, Math.min(STRIP_HEIGHT, e.y));
       pointerY.value = newY;
-      runOnJS(updatePointerFromY)(newY);
+      scheduleOnRN(updatePointerFromY, newY);
     })
     .onUpdate((e) => {
       const newY = Math.max(0, Math.min(STRIP_HEIGHT, e.y));
       pointerY.value = newY;
-      runOnJS(updatePointerFromY)(newY);
+      scheduleOnRN(updatePointerFromY, newY);
     });
 
   const pointerStyle = useAnimatedStyle(() => ({

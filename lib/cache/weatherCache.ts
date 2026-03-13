@@ -1,4 +1,4 @@
-import { File, Directory, Paths } from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { WeatherData } from '../../types';
 
 function locationKey(lat: number, lon: number): string {

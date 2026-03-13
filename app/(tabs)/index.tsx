@@ -20,7 +20,7 @@ import { getColors } from '../../theme/colors';
 import { scoreDay, getBestDay, getGoodDays } from '../../lib/calc/flightScore';
 import { getMondayOfWeek, toDateString, addDays, isPastDay, isSameDay, formatDateLong, formatCacheTime } from '../../lib/utils/time';
 import { scoreToColor } from '../../lib/utils/scoreColors';
-import { DaySummary, SavedLocation } from '../../types';
+import { DaySummary } from '../../types';
 import * as Location from 'expo-location';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
