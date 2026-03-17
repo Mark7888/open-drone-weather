@@ -26,6 +26,7 @@ import { scoreDay } from '../../lib/calc/flightScore';
 import { scoreToColor, scoreToLabel } from '../../lib/utils/scoreColors';
 import { fromDateString, formatDateLong, formatTime, hourFraction } from '../../lib/utils/time';
 import { convertTemperature, temperatureLabel, convertWind, windLabel, formatVisibility } from '../../lib/utils/units';
+import { getWmoInfo } from '../../lib/utils/wmoUtils';
 import { FactorScore, BlockerReason } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -123,6 +124,10 @@ export default function DayDetailScreen() {
   // Get hourly weather for the pointer hour
   const hourlyForDay = weatherData!.hourly.filter((h) => h.time.startsWith(dateStr!));
   const hourlyEntry = hourlyForDay[hourIndex] ?? hourlyForDay[0];
+
+  // WMO weather condition for current hour
+  const isNightHour = pointerHour < summary.dawn.getHours() || pointerHour >= summary.dusk.getHours();
+  const wmoInfo = hourlyEntry ? getWmoInfo(hourlyEntry.weatherCode, isNightHour) : null;
 
   const bestWindowLabel =
     summary.bestWindowStart !== null && summary.bestWindowEnd !== null
@@ -223,8 +228,16 @@ export default function DayDetailScreen() {
             <Text style={[styles.overallScoreValue, { color: colors.textPrimary }]}>
               {currentHourScore.score} / 100
             </Text>
-            <View style={[styles.scoreChip, { backgroundColor: scoreToColor(currentHourScore.score) }]}>
-              <Text style={styles.scoreChipText}>{scoreToLabel(currentHourScore.score)}</Text>
+            <View style={styles.overallScoreRight}>
+              {wmoInfo && (
+                <View style={styles.weatherConditionChip}>
+                  <MaterialCommunityIcons name={wmoInfo.icon as any} size={16} color={colors.textPrimary} />
+                  <Text style={[styles.weatherConditionText, { color: colors.textPrimary }]}>{wmoInfo.description}</Text>
+                </View>
+              )}
+              <View style={[styles.scoreChip, { backgroundColor: scoreToColor(currentHourScore.score) }]}>
+                <Text style={styles.scoreChipText}>{scoreToLabel(currentHourScore.score)}</Text>
+              </View>
             </View>
           </View>
 
@@ -374,12 +387,24 @@ function FactorRow({ factor, colors, units, warn120m, onWarnTap }: {
 }
 
 function BlockerRow({ blocker, colors }: { blocker: BlockerReason; colors: any }) {
+  const isWmoCode = blocker.unit === 'WMO code';
+  const wmoInfo = isWmoCode ? getWmoInfo(Math.round(blocker.rawValue)) : null;
+
   return (
     <View style={styles.blockerRow}>
       <MaterialCommunityIcons name="cancel" size={14} color="#F44336" />
-      <Text style={[styles.blockerText, { color: '#F44336' }]}>
-        BLOCKED: {blocker.factor} {blocker.rawValue.toFixed(1)}{blocker.unit} {blocker.threshold > 0 ? `(≥ ${blocker.threshold}${blocker.unit})` : ''}
-      </Text>
+      {isWmoCode && wmoInfo ? (
+        <View style={styles.blockerWmoContent}>
+          <MaterialCommunityIcons name={wmoInfo.icon as any} size={14} color="#F44336" />
+          <Text style={[styles.blockerText, { color: '#F44336' }]}>
+            BLOCKED: {wmoInfo.description}
+          </Text>
+        </View>
+      ) : (
+        <Text style={[styles.blockerText, { color: '#F44336' }]}>
+          BLOCKED: {blocker.factor} {blocker.rawValue.toFixed(1)}{blocker.unit} {blocker.threshold > 0 ? `(≥ ${blocker.threshold}${blocker.unit})` : ''}
+        </Text>
+      )}
     </View>
   );
 }
@@ -470,6 +495,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   overallScoreValue: { fontSize: 22, fontWeight: '700' },
+  overallScoreRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  weatherConditionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  weatherConditionText: { fontSize: 13 },
   scoreChip: {
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -508,6 +545,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   blockerText: { fontSize: 13, flex: 1 },
+  blockerWmoContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   explainerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
