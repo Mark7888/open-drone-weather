@@ -395,7 +395,7 @@ function BlockerRow({ blocker, colors }: { blocker: BlockerReason; colors: any }
       <MaterialCommunityIcons name="cancel" size={14} color="#F44336" />
       {isWmoCode && wmoInfo ? (
         <View style={styles.blockerWmoContent}>
-          <Text style={[styles.blockerText, { color: '#F44336' }]}>BLOCKED: </Text>
+          <Text style={[styles.blockerText, { color: '#F44336', flex: 0 }]}>BLOCKED: </Text>
           <MaterialCommunityIcons name={wmoInfo.icon as any} size={14} color="#F44336" />
           <Text style={[styles.blockerText, { color: '#F44336' }]}>{wmoInfo.description}</Text>
         </View>
