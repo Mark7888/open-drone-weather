@@ -1,28 +1,47 @@
-import wmoDescriptions from '../../constants/wmoDescriptions.json';
+type WmoVariant = { description: string; icon: string };
+type WmoEntry = { day: WmoVariant; night: WmoVariant };
 
-type WmoEntry = {
-  day: { description: string; image: string };
-  night: { description: string; image: string };
+/** Creates an entry where the day and night variants differ. */
+const e = (dayDesc: string, nightDesc: string, dayIcon: string, nightIcon: string): WmoEntry => ({
+  day: { description: dayDesc, icon: dayIcon },
+  night: { description: nightDesc, icon: nightIcon },
+});
+
+/** Creates an entry where the day and night variants are the same. */
+const es = (description: string, icon: string): WmoEntry =>
+  e(description, description, icon, icon);
+
+/** WMO weather code → day/night description and MaterialCommunityIcons icon name. */
+const WMO_DATA: Record<number, WmoEntry> = {
+  0:  e('Sunny',        'Clear',        'weather-sunny',         'weather-night'),
+  1:  e('Mainly Sunny', 'Mainly Clear', 'weather-sunny',         'weather-night'),
+  2:  e('Partly Cloudy','Partly Cloudy','weather-partly-cloudy', 'weather-night-partly-cloudy'),
+  3:  es('Cloudy',                      'weather-cloudy'),
+  45: es('Foggy',                       'weather-fog'),
+  48: es('Rime Fog',                    'weather-fog'),
+  51: es('Light Drizzle',               'weather-rainy'),
+  53: es('Drizzle',                     'weather-rainy'),
+  55: es('Heavy Drizzle',               'weather-rainy'),
+  56: es('Light Freezing Drizzle',      'weather-rainy'),
+  57: es('Freezing Drizzle',            'weather-rainy'),
+  61: es('Light Rain',                  'weather-pouring'),
+  63: es('Rain',                        'weather-pouring'),
+  65: es('Heavy Rain',                  'weather-pouring'),
+  66: es('Light Freezing Rain',         'weather-pouring'),
+  67: es('Freezing Rain',               'weather-pouring'),
+  71: es('Light Snow',                  'weather-snowy'),
+  73: es('Snow',                        'weather-snowy'),
+  75: es('Heavy Snow',                  'weather-snowy'),
+  77: es('Snow Grains',                 'weather-snowy'),
+  80: es('Light Showers',               'weather-rainy'),
+  81: es('Showers',                     'weather-rainy'),
+  82: es('Heavy Showers',               'weather-rainy'),
+  85: es('Light Snow Showers',          'weather-snowy'),
+  86: es('Snow Showers',                'weather-snowy'),
+  95: es('Thunderstorm',                'weather-lightning'),
+  96: es('Light Thunderstorms With Hail','weather-lightning'),
+  99: es('Thunderstorm With Hail',      'weather-lightning'),
 };
-
-const WMO_DATA = wmoDescriptions as Record<string, WmoEntry>;
-
-/**
- * Maps an OWM image URL (e.g. "http://...01d@2x.png") to a MaterialCommunityIcons name.
- * The day/night variant is derived from the URL's 'd'/'n' suffix.
- */
-function owmImageToIcon(imageUrl: string): string {
-  const isNight = imageUrl.includes('n@');
-  if (imageUrl.includes('01')) return isNight ? 'weather-night' : 'weather-sunny';
-  if (imageUrl.includes('02')) return isNight ? 'weather-night-partly-cloudy' : 'weather-partly-cloudy';
-  if (imageUrl.includes('03') || imageUrl.includes('04')) return 'weather-cloudy';
-  if (imageUrl.includes('09')) return 'weather-rainy';
-  if (imageUrl.includes('10')) return 'weather-pouring';
-  if (imageUrl.includes('11')) return 'weather-lightning';
-  if (imageUrl.includes('13')) return 'weather-snowy';
-  if (imageUrl.includes('50')) return 'weather-fog';
-  return 'weather-cloudy';
-}
 
 /**
  * Returns the human-readable description and MaterialCommunityIcons icon name
@@ -35,13 +54,9 @@ export function getWmoInfo(
   code: number,
   isNight: boolean = false
 ): { description: string; icon: string } {
-  const entry = WMO_DATA[String(code)];
+  const entry = WMO_DATA[code];
   if (!entry) {
-    return { description: `WMO code ${code}`, icon: 'weather-cloudy' };
+    return { description: `WMO ${code}`, icon: 'weather-cloudy' };
   }
-  const variant = isNight ? entry.night : entry.day;
-  return {
-    description: variant.description,
-    icon: owmImageToIcon(variant.image),
-  };
+  return isNight ? entry.night : entry.day;
 }
