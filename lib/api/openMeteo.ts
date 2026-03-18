@@ -93,7 +93,7 @@ export async function searchLocations(query: string): Promise<GeocodingResult[]>
   if (!query.trim()) return [];
   const params = new URLSearchParams({ q: query.trim(), format: 'json', limit: '10', addressdetails: '1' });
   const response = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
-    headers: { 'Accept-Language': 'en', 'User-Agent': 'drone-weather-app' },
+    headers: { 'Accept-Language': 'en', 'User-Agent': 'OpenDroneWeather' },
   });
   if (!response.ok) return [];
   const json: NominatimResult[] = await response.json();

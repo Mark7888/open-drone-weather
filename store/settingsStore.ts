@@ -61,7 +61,7 @@ export const useSettingsStore = create<SettingsState>()(
       setHideDronePresets: (enabled) => set({ hideDronePresets: enabled }),
     }),
     {
-      name: 'dronecast-settings',
+      name: 'opendroneweather-settings',
       storage: createJSONStorage(() => secureStorage),
     }
   )

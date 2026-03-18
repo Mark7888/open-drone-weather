@@ -93,7 +93,7 @@ export const useLocationStore = create<LocationState>()(
         }),
     }),
     {
-      name: 'dronecast-locations',
+      name: 'opendroneweather-locations',
       storage: createJSONStorage(() => secureStorage),
     }
   )

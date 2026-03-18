@@ -90,7 +90,7 @@ export const useDroneStore = create<DroneState>()(
       },
     }),
     {
-      name: 'dronecast-drones',
+      name: 'opendroneweather-drones',
       storage: createJSONStorage(() => secureStorage),
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<DroneState> | undefined;
