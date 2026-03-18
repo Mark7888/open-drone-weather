@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "drone-weather-app",
-    "slug": "drone-weather-app",
+    "name": "OpenDroneWeather",
+    "slug": "opendroneweather",
     "version": "1.0.0",
-    "scheme": "dronecast",
+    "scheme": "opendroneweather",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.droneweatherapp"
+      "bundleIdentifier": "com.mark7888.opendroneweather"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.droneweatherapp",
+      "package": "com.mark7888.opendroneweather",
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
