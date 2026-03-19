@@ -2,18 +2,6 @@
 
 A weather planning app for drone pilots. OpenDroneWeather fetches a 16-day hourly forecast for any location and scores every hour against your drone's flight limits — so you can see at a glance when it's safe to fly.
 
-<p align="center">
-  <img src="docs/screenshot-light-1.png" alt="OpenDroneWeather light mode" width="300" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshot-light-2.png" alt="OpenDroneWeather light mode" width="300" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshot-dark-1.png" alt="OpenDroneWeather dark mode" width="300" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshot-dark-2.png" alt="OpenDroneWeather dark mode" width="300" />
-</p>
-
----
-
 ## Features
 
 - **Flight score calendar** — a 3-week grid where each day shows colour-coded hourly scores in a single column, giving an instant overview of the week ahead
@@ -24,6 +12,22 @@ A weather planning app for drone pilots. OpenDroneWeather fetches a 16-day hourl
 - **Night flying toggle** — optionally restrict scores to daylight hours only
 - **Flexible units** — wind in km/h, m/s, or mph; temperature in °C or °F; distance in km or mi
 - **Offline support** — forecasts are cached locally so previously loaded data is available without a network connection
+
+## Screenshots
+
+### Dark mode
+
+![myimage](docs/screenshots/screenshot-dark-1.png?raw=true)
+![myimage](docs/screenshots/screenshot-dark-2.png?raw=true)
+
+---
+
+### Light mode
+
+![myimage](docs/screenshots/screenshot-light-1.png?raw=true)
+![myimage](docs/screenshots/screenshot-light-2.png?raw=true)
+
+---
 
 ## Tech Stack
 
