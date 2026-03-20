@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK and AAB
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build APK
+    name: Build APK and AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -51,20 +51,22 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Build release APK
+      - name: Build release APK and AAB
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --build-cache
+          ./gradlew assembleRelease bundleRelease --no-daemon --build-cache
 
       - name: Sanitize ref name
         id: sanitize
         run: echo "ref=$(echo '${{ github.ref_name }}' | sed 's/\//-/g')" >> $GITHUB_OUTPUT
 
-      - name: Upload APK artifact
+      - name: Upload APK and AAB artifacts
         uses: actions/upload-artifact@v4
         with:
           name: opendroneweather-${{ steps.sanitize.outputs.ref }}-${{ github.run_number }}
-          path: android/app/build/outputs/apk/release/*.apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
           retention-days: 15
 
       - name: Create GitHub Release
@@ -72,6 +74,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
-          files: android/app/build/outputs/apk/release/*.apk
+          files: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
           draft: false
           prerelease: false
