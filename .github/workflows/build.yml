@@ -45,16 +45,46 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Expo prebuild (generate native Android project)
-        run: npx expo prebuild --platform android --no-install
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
+      - name: Build debug APK
+        run: eas build --local --platform android --profile debug --non-interactive --output ./build/opendroneweather-debug.apk
+        env:
+          EAS_NO_VCS: 1
+          EXPO_NO_TELEMETRY: 1
 
-      - name: Build release APK and AAB
+      - name: Set up signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          cd android
-          ./gradlew assembleRelease bundleRelease --no-daemon --build-cache
+          echo "$KEYSTORE_BASE64" | base64 --decode > android-keystore.jks
+          node -e "
+            const fs = require('fs');
+            fs.writeFileSync('credentials.json', JSON.stringify({
+              android: {
+                keystore: {
+                  keystorePath: './android-keystore.jks',
+                  keystorePassword: process.env.KEYSTORE_PASSWORD,
+                  keyAlias: process.env.KEY_ALIAS,
+                  keyPassword: process.env.KEY_PASSWORD,
+                }
+              }
+            }, null, 2));
+          "
+
+      - name: Build production AAB
+        run: eas build --local --platform android --profile production --non-interactive --output ./build/opendroneweather-production.aab
+        env:
+          EAS_NO_VCS: 1
+          EXPO_NO_TELEMETRY: 1
+
+      - name: Clean up signing credentials
+        if: always()
+        run: rm -f android-keystore.jks credentials.json
 
       - name: Sanitize ref name
         id: sanitize
@@ -64,9 +94,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: opendroneweather-${{ steps.sanitize.outputs.ref }}-${{ github.run_number }}
-          path: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+          path: build/
           retention-days: 15
 
       - name: Create GitHub Release
@@ -74,8 +102,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
-          files: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+          files: build/*
           draft: false
           prerelease: false

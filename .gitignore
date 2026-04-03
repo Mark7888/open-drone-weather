@@ -40,5 +40,11 @@ yarn-error.*
 /ios
 /android
 
+# EAS build output
+/build
+
+# EAS credentials (generated in CI)
+credentials.json
+
 # asdf config
 .tool-versions
