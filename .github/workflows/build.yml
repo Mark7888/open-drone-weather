@@ -55,6 +55,7 @@ jobs:
           EAS_NO_VCS: 1
           EXPO_NO_TELEMETRY: 1
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ORG_GRADLE_PROJECT_bundleInDebug: "true"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
