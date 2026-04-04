@@ -2,7 +2,7 @@
   "expo": {
     "name": "OpenDroneWeather",
     "slug": "opendroneweather",
-    "owner": "Mark7888",
+    "owner": "mark7888",
     "version": "1.0.0",
     "scheme": "opendroneweather",
     "orientation": "portrait",
@@ -36,6 +36,12 @@
     ],
     "buildCacheProvider": {
       "plugin": "expo-build-disk-cache"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c32c22d7-20be-4a14-8761-f7533d224d3f"
+      }
     }
   }
 }
