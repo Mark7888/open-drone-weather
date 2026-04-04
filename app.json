@@ -2,6 +2,7 @@
   "expo": {
     "name": "OpenDroneWeather",
     "slug": "opendroneweather",
+    "owner": "Mark7888",
     "version": "1.0.0",
     "scheme": "opendroneweather",
     "orientation": "portrait",
