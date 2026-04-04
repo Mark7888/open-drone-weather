@@ -57,7 +57,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: debug-apk
           path: opendroneweather-debug.apk
@@ -134,7 +134,7 @@ jobs:
         run: rm -f android-keystore.jks credentials.json
 
       - name: Upload production AAB
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: production-aab
           path: opendroneweather-production.aab
@@ -147,13 +147,13 @@ jobs:
 
     steps:
       - name: Download debug APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: debug-apk
           path: build/
 
       - name: Download production AAB
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: production-aab
           path: build/
@@ -163,7 +163,7 @@ jobs:
         run: echo "ref=$(echo '${{ github.ref_name }}' | sed 's/\//-/g')" >> $GITHUB_OUTPUT
 
       - name: Upload combined artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: opendroneweather-${{ steps.sanitize.outputs.ref }}-${{ github.run_number }}
           path: build/
