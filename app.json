@@ -24,7 +24,8 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.mark7888.opendroneweather",
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "enableProguardInReleaseBuilds": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
