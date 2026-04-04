@@ -2,6 +2,7 @@
   "expo": {
     "name": "OpenDroneWeather",
     "slug": "opendroneweather",
+    "owner": "mark7888",
     "version": "1.0.0",
     "scheme": "opendroneweather",
     "orientation": "portrait",
@@ -31,10 +32,26 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.swmansion.reanimated.** { *; }\n-keepattributes SourceFile,LineNumberTable\n-keepattributes *Annotation*\n-dontwarn com.facebook.react.**"
+          }
+        }
+      ]
     ],
     "buildCacheProvider": {
       "plugin": "expo-build-disk-cache"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c32c22d7-20be-4a14-8761-f7533d224d3f"
+      }
     }
   }
 }

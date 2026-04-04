@@ -12,61 +12,162 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build APK and AAB
+  build-debug:
+    name: Build debug APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-debug-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
+            ${{ runner.os }}-gradle-debug-
             ${{ runner.os }}-gradle-
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Expo prebuild (generate native Android project)
-        run: npx expo prebuild --platform android --no-install
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
+      - name: Build debug APK
+        run: eas build --local --platform android --profile debug --non-interactive --output ./opendroneweather-debug.apk
+        env:
+          EAS_NO_VCS: 1
+          EXPO_NO_TELEMETRY: 1
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ORG_GRADLE_PROJECT_bundleInDebug: "true"
 
-      - name: Build release APK and AAB
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: debug-apk
+          path: opendroneweather-debug.apk
+          retention-days: 15
+
+  build-production:
+    name: Build production AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-production-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-production-
+            ${{ runner.os }}-gradle-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Set up signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          cd android
-          ./gradlew assembleRelease bundleRelease --no-daemon --build-cache
+          echo "$KEYSTORE_BASE64" | base64 --decode > android-keystore.jks
+          node -e "
+            const fs = require('fs');
+            fs.writeFileSync('credentials.json', JSON.stringify({
+              android: {
+                keystore: {
+                  keystorePath: './android-keystore.jks',
+                  keystorePassword: process.env.KEYSTORE_PASSWORD,
+                  keyAlias: process.env.KEY_ALIAS,
+                  keyPassword: process.env.KEY_PASSWORD,
+                }
+              }
+            }, null, 2));
+          "
+
+      - name: Build production AAB
+        run: eas build --local --platform android --profile production --non-interactive --output ./opendroneweather-production.aab
+        env:
+          EAS_NO_VCS: 1
+          EXPO_NO_TELEMETRY: 1
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Clean up signing credentials
+        if: always()
+        run: rm -f android-keystore.jks credentials.json
+
+      - name: Upload production AAB
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-aab
+          path: opendroneweather-production.aab
+          retention-days: 15
+
+  release:
+    name: Upload artifacts and release
+    runs-on: ubuntu-latest
+    needs: [build-debug, build-production]
+
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@v8
+        with:
+          name: debug-apk
+          path: build/
+
+      - name: Download production AAB
+        uses: actions/download-artifact@v8
+        with:
+          name: production-aab
+          path: build/
 
       - name: Sanitize ref name
         id: sanitize
         run: echo "ref=$(echo '${{ github.ref_name }}' | sed 's/\//-/g')" >> $GITHUB_OUTPUT
 
-      - name: Upload APK and AAB artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload combined artifacts
+        uses: actions/upload-artifact@v7
         with:
           name: opendroneweather-${{ steps.sanitize.outputs.ref }}-${{ github.run_number }}
-          path: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+          path: build/
           retention-days: 15
 
       - name: Create GitHub Release
@@ -74,8 +175,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
-          files: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/bundle/release/*.aab
+          files: build/*
           draft: false
           prerelease: false

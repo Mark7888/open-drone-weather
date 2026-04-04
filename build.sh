@@ -1,6 +1,3 @@
 #!/bin/zsh
 
-npx expo prebuild
-
-cd android
-./gradlew assembleRelease --info
+npx eas build --local --platform android --profile debug --non-interactive --output ./build/opendroneweather-debug.apk
