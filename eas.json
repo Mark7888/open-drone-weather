@@ -2,6 +2,7 @@
   "cli": {
     "version": ">= 15.0.0"
   },
+  "owner": "Mark7888",
   "build": {
     "debug": {
       "developmentClient": false,
