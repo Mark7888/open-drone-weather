@@ -201,6 +201,26 @@ export default function SettingsScreen() {
 
         <TouchableOpacity
           style={[styles.actionRow, { borderBottomColor: colors.border }]}
+          onPress={() => Linking.openURL('https://buymeacoffee.com/Mark7888')}
+        >
+          <MaterialCommunityIcons name="coffee" size={16} color={colors.tabBarActive} />
+          <Text style={[styles.actionLabel, { color: colors.tabBarActive }]}>
+            Support my work — Buy me a coffee
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionRow, { borderBottomColor: colors.border }]}
+          onPress={() => Linking.openURL('https://github.com/Mark7888/open-drone-weather')}
+        >
+          <MaterialCommunityIcons name="github" size={16} color={colors.tabBarActive} />
+          <Text style={[styles.actionLabel, { color: colors.tabBarActive }]}>
+            View source on GitHub
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionRow, { borderBottomColor: colors.border }]}
           onPress={() => Linking.openURL('https://open-meteo.com/')}
         >
           <MaterialCommunityIcons name="open-in-new" size={16} color={colors.tabBarActive} />
