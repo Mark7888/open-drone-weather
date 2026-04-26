@@ -1,13 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
+  NativeSyntheticEvent,
 } from 'react-native';
-import MapView, { Region } from 'react-native-maps';
+import {
+  Map,
+  Camera,
+  UserLocation,
+  type ViewStateChangeEvent,
+} from '@maplibre/maplibre-react-native';
 import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,17 +27,21 @@ import LayerSelector from '../../components/map/LayerSelector';
 import DateHourControls from '../../components/map/DateHourControls';
 import DisplayModeToggle from '../../components/map/DisplayModeToggle';
 import { GridPoint, MapLayer } from '../../types';
-import { toDateString } from '../../lib/utils/time';
 
 const DEFAULT_LAT = 47.5;
 const DEFAULT_LON = 19.0;
 const DEFAULT_ZOOM = 9;
 const LOAD_DEBOUNCE_MS = 600;
+/** Zoom bounds used when snapping the fractional zoom to a tile-resolution step */
+const MIN_TILE_ZOOM = 5;
+const MAX_TILE_ZOOM = 11;
 
-function zoomLevelFromDelta(latitudeDelta: number): number {
-  // Approximate zoom level from latitudeDelta
-  return Math.round(Math.log2(360 / latitudeDelta));
-}
+/**
+ * Free vector tile styles from OpenFreeMap (openfreemap.org).
+ * No API key required; attribution rendered automatically by MapLibre.
+ */
+const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/liberty';
 
 export default function MapScreen() {
   const systemScheme = useColorScheme();
@@ -68,73 +77,61 @@ export default function MapScreen() {
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initial region centred on selected location (or default)
-  const initialRegion: Region = {
-    latitude: activeLocation?.lat && activeLocation.lat !== 0 ? activeLocation.lat : DEFAULT_LAT,
-    longitude: activeLocation?.lon && activeLocation.lon !== 0 ? activeLocation.lon : DEFAULT_LON,
-    latitudeDelta: 0.6,
-    longitudeDelta: 0.6,
-  };
+  const isDark = (themeOverride ?? systemScheme) === 'dark';
 
-  // Load data for initial region on mount
-  useEffect(() => {
-    const r = initialRegion;
-    loadVisibleTiles(
-      r.latitude - r.latitudeDelta / 2,
-      r.latitude + r.latitudeDelta / 2,
-      r.longitude - r.longitudeDelta / 2,
-      r.longitude + r.longitudeDelta / 2,
-      DEFAULT_ZOOM
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const initialLon =
+    activeLocation?.lon && activeLocation.lon !== 0 ? activeLocation.lon : DEFAULT_LON;
+  const initialLat =
+    activeLocation?.lat && activeLocation.lat !== 0 ? activeLocation.lat : DEFAULT_LAT;
 
-  function loadVisibleTiles(
-    latMin: number,
-    latMax: number,
-    lonMin: number,
-    lonMax: number,
-    zoom: number
-  ) {
-    loadRegion(latMin, latMax, lonMin, lonMax, zoom);
-  }
+  /**
+   * Fires when the map region finishes changing (pan/zoom/initial load).
+   * event.nativeEvent.bounds = [west, south, east, north]
+   * event.nativeEvent.zoom   = current zoom level
+   */
+  const onRegionDidChange = useCallback(
+    (event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+      const { zoom, bounds } = event.nativeEvent;
+      const [lonMin, latMin, lonMax, latMax] = bounds;
 
-  const onRegionChangeComplete = useCallback(
-    (region: Region) => {
-      const zoom = zoomLevelFromDelta(region.latitudeDelta);
       setCurrentZoom(zoom);
 
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       debounceTimer.current = setTimeout(() => {
-        const latMin = region.latitude - region.latitudeDelta / 2;
-        const latMax = region.latitude + region.latitudeDelta / 2;
-        const lonMin = region.longitude - region.longitudeDelta / 2;
-        const lonMax = region.longitude + region.longitudeDelta / 2;
-        loadVisibleTiles(latMin, latMax, lonMin, lonMax, zoom);
+        loadRegion(latMin, latMax, lonMin, lonMax, Math.round(zoom));
       }, LOAD_DEBOUNCE_MS);
     },
     [loadRegion]
   );
 
-  // Collect all grid points currently loaded
-  const allPoints: GridPoint[] = Object.values(tiles).flat();
+  const allPoints: GridPoint[] = useMemo(
+    () => Object.values(tiles).flat(),
+    [tiles]
+  );
   const isLoading = loadingKeys.size > 0;
-
-  const stepDeg = stepDegForZoom(currentZoom);
-  const cellHalfDeg = stepDeg / 2;
+  const cellHalfDeg = stepDegForZoom(Math.max(MIN_TILE_ZOOM, Math.min(MAX_TILE_ZOOM, Math.round(currentZoom)))) / 2;
 
   return (
     <View style={styles.container}>
-      {/* Full-screen map */}
-      <MapView
+      {/* Full-screen MapLibre Native map with free vector tiles */}
+      <Map
         style={StyleSheet.absoluteFillObject}
-        initialRegion={initialRegion}
-        onRegionChangeComplete={onRegionChangeComplete}
-        mapType={systemScheme === 'dark' ? 'mutedStandard' : 'standard'}
-        showsUserLocation
-        showsCompass={false}
-        showsScale={false}
+        mapStyle={isDark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT}
+        onRegionDidChange={onRegionDidChange}
+        compass={false}
+        logo={false}
+        attribution
+        attributionPosition={{ bottom: 8, right: 8 }}
       >
+        <Camera
+          initialViewState={{
+            center: [initialLon, initialLat],
+            zoom: DEFAULT_ZOOM,
+          }}
+        />
+        <UserLocation />
+
+        {/* Weather data overlay — GeoJSON ShapeSource + fill/symbol native layers */}
         {allPoints.length > 0 && (
           <WeatherGridOverlay
             points={allPoints}
@@ -148,9 +145,9 @@ export default function MapScreen() {
             cellHalfDeg={cellHalfDeg}
           />
         )}
-      </MapView>
+      </Map>
 
-      {/* Top bar — loading indicator */}
+      {/* Top status badge */}
       <View
         style={[
           styles.topBar,
@@ -167,7 +164,7 @@ export default function MapScreen() {
         </Text>
       </View>
 
-      {/* Bottom controls panel */}
+      {/* Bottom collapsible controls panel */}
       <View
         style={[
           styles.controlsPanel,
@@ -178,7 +175,6 @@ export default function MapScreen() {
           },
         ]}
       >
-        {/* Collapse toggle */}
         <TouchableOpacity
           onPress={() => setControlsExpanded((v) => !v)}
           style={styles.collapseBtn}
@@ -189,7 +185,6 @@ export default function MapScreen() {
 
         {controlsExpanded && (
           <>
-            {/* Display mode + drone */}
             <DisplayModeToggle
               mode={displayMode}
               onModeChange={setDisplayMode}
@@ -203,8 +198,6 @@ export default function MapScreen() {
               onToggleDronePicker={() => setDronePicker((v) => !v)}
               colors={colors}
             />
-
-            {/* Layer selector */}
             <LayerSelector
               selected={selectedLayer}
               onSelect={(layer: MapLayer) => {
@@ -213,8 +206,6 @@ export default function MapScreen() {
               }}
               colors={colors}
             />
-
-            {/* Date + hour */}
             <DateHourControls
               selectedDate={selectedDate}
               selectedHour={selectedHour}
