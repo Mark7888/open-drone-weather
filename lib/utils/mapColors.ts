@@ -215,7 +215,7 @@ export const LAYER_META: Record<
   rain_probability:{ label: 'Rain',    icon: 'weather-rainy' },
   wind_10m:        { label: 'Wind 10m', icon: 'weather-windy' },
   wind_80m:        { label: 'Wind 80m', icon: 'weather-windy' },
-  wind_120m:       { label: 'Wind 120m',icon: 'weather-windy' },
+  wind_120m:       { label: 'Wind 120m', icon: 'weather-windy' },
   flight_score:    { label: 'Score',   icon: 'quadcopter' },
 };
 
