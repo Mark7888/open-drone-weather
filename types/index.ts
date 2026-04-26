@@ -29,7 +29,9 @@ export interface HourlyWeather {
   windSpeed120m: number;            // km/h
   windGust10m: number;              // km/h
   windGust80m: number;              // km/h
+  windDirection10m: number;         // degrees
   windDirection80m: number;         // degrees
+  windDirection120m: number;        // degrees
 }
 
 export interface WeatherData {
@@ -87,6 +89,37 @@ export interface SavedLocation {
   lat: number;
   lon: number;
   isGPS: boolean;
+}
+
+// Map
+export type MapLayer =
+  | 'temperature'
+  | 'humidity'
+  | 'cloud_cover'
+  | 'visibility'
+  | 'rain_probability'
+  | 'wind_10m'
+  | 'wind_80m'
+  | 'wind_120m'
+  | 'flight_score';
+
+export type MapDisplayMode = 'raw' | 'score';
+
+export type WindAltitude = '10m' | '80m' | '120m';
+
+export interface GridPoint {
+  lat: number;
+  lon: number;
+  hourly: HourlyWeather[];
+}
+
+export interface MapGridTile {
+  key: string;
+  zoom: number;
+  tileX: number;
+  tileY: number;
+  fetchedAt: number;
+  points: GridPoint[];
 }
 
 // Units

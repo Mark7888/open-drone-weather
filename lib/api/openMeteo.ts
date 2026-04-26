@@ -44,7 +44,9 @@ export async function fetchWeather(lat: number, lon: number, locationName: strin
       'wind_speed_80m',
       'wind_speed_120m',
       'wind_gusts_10m',
+      'wind_direction_10m',
       'wind_direction_80m',
+      'wind_direction_120m',
     ].join(','),
     timezone: 'auto',
     forecast_days: '16',
@@ -79,7 +81,9 @@ function parseResponse(json: any, lat: number, lon: number, locationName: string
     windSpeed120m: h.wind_speed_120m[i] ?? 0,
     windGust10m: h.wind_gusts_10m[i] ?? 0,
     windGust80m: h.wind_gusts_10m[i] ?? 0,  // API no longer provides gusts at 80m; use surface gusts as proxy
+    windDirection10m: h.wind_direction_10m[i] ?? 0,
     windDirection80m: h.wind_direction_80m[i] ?? 0,
+    windDirection120m: h.wind_direction_120m[i] ?? 0,
   }));
 
   return {

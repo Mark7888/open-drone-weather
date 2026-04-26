@@ -15,6 +15,7 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useWeatherStore } from '../../store/weatherStore';
 import { getColors } from '../../theme/colors';
 import { clearAllCache, getCacheInfo } from '../../lib/cache/weatherCache';
+import { clearMapCache, getMapCacheInfo } from '../../lib/cache/mapCache';
 import { formatCacheTime } from '../../lib/utils/time';
 import { ThemeOverride, TemperatureUnit, WindUnit, DistanceUnit } from '../../types';
 import Constants from 'expo-constants';
@@ -39,10 +40,13 @@ export default function SettingsScreen() {
   const lastFetched = useWeatherStore((s) => s.lastFetched);
 
   const [cacheInfo, setCacheInfo] = useState<{ lastUpdated: number | null; fileCount: number }>({ lastUpdated: null, fileCount: 0 });
+  const [mapCacheInfo, setMapCacheInfo] = useState<{ lastUpdated: number | null; fileCount: number }>({ lastUpdated: null, fileCount: 0 });
 
   useEffect(() => {
     const info = getCacheInfo();
     setCacheInfo(info);
+    const mapInfo = getMapCacheInfo();
+    setMapCacheInfo(mapInfo);
   }, []);
 
   async function handleClearCache() {
@@ -60,6 +64,26 @@ export default function SettingsScreen() {
             const info = getCacheInfo();
             setCacheInfo(info);
             Alert.alert('Done', 'Weather cache cleared.');
+          },
+        },
+      ]
+    );
+  }
+
+  function handleClearMapCache() {
+    Alert.alert(
+      'Clear map cache',
+      'This will delete all cached map tile data. Map data will reload from the internet when you open the Map.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            clearMapCache();
+            const info = getMapCacheInfo();
+            setMapCacheInfo(info);
+            Alert.alert('Done', 'Map cache cleared.');
           },
         },
       ]
@@ -189,6 +213,23 @@ export default function SettingsScreen() {
         >
           <MaterialCommunityIcons name="delete-sweep-outline" size={18} color="#F44336" />
           <Text style={[styles.actionLabel, { color: '#F44336' }]}>Clear weather cache</Text>
+        </TouchableOpacity>
+
+        <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Map cache status</Text>
+          <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+            {mapCacheInfo.lastUpdated
+              ? `Updated ${formatCacheTime(mapCacheInfo.lastUpdated)}`
+              : 'No cache'}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.actionRow, { borderBottomColor: colors.border }]}
+          onPress={handleClearMapCache}
+        >
+          <MaterialCommunityIcons name="map-minus" size={18} color="#F44336" />
+          <Text style={[styles.actionLabel, { color: '#F44336' }]}>Clear map cache</Text>
         </TouchableOpacity>
 
         {/* ABOUT */}

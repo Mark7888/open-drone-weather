@@ -34,6 +34,12 @@
       "expo-secure-store",
       "expo-font",
       [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": ""
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

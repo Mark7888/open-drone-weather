@@ -36,6 +36,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="map-search" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="drones"
         options={{
           title: 'Drones',
