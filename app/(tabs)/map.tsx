@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Camera,
   UserLocation,
   type ViewStateChangeEvent,
+  type MapRef,
 } from '@maplibre/maplibre-react-native';
 import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,22 +27,34 @@ import WeatherGridOverlay from '../../components/map/WeatherGridOverlay';
 import LayerSelector from '../../components/map/LayerSelector';
 import DateHourControls from '../../components/map/DateHourControls';
 import DisplayModeToggle from '../../components/map/DisplayModeToggle';
-import { GridPoint, MapLayer } from '../../types';
+import { MapLayer } from '../../types';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const DEFAULT_LAT = 47.5;
 const DEFAULT_LON = 19.0;
 const DEFAULT_ZOOM = 9;
-const LOAD_DEBOUNCE_MS = 600;
-/** Zoom bounds used when snapping the fractional zoom to a tile-resolution step */
+/** Milliseconds to wait after the last region-change event before fetching.
+ *  500 ms gives a comfortable balance: fast enough to feel responsive after
+ *  the user lifts their finger, slow enough to avoid redundant API calls
+ *  during a continuous pan/zoom gesture. */
+const LOAD_DEBOUNCE_MS = 500;
+/** Clamped tile-zoom range (must match stepDegForZoom breakpoints) */
 const MIN_TILE_ZOOM = 5;
 const MAX_TILE_ZOOM = 11;
 
 /**
  * Free vector tile styles from OpenFreeMap (openfreemap.org).
- * No API key required; attribution rendered automatically by MapLibre.
+ * No API key required; attribution is rendered automatically by MapLibre.
  */
 const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/liberty';
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 
 export default function MapScreen() {
   const systemScheme = useColorScheme();
@@ -54,7 +67,9 @@ export default function MapScreen() {
   const profiles = useDroneStore((s) => s.profiles);
   const activeDroneId = useDroneStore((s) => s.activeDroneId);
   const hideDronePresets = useSettingsStore((s) => s.hideDronePresets);
-  const visibleProfiles = hideDronePresets ? profiles.filter((p) => !p.isPreset) : profiles;
+  const visibleProfiles = hideDronePresets
+    ? profiles.filter((p) => !p.isPreset)
+    : profiles;
   const activeDrone = profiles.find((p) => p.id === activeDroneId) ?? profiles[0];
 
   const {
@@ -76,6 +91,9 @@ export default function MapScreen() {
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapRef = useRef<MapRef | null>(null);
+  /** Ensures the on-load initial fetch only runs once */
+  const initialLoadDone = useRef(false);
 
   const isDark = (themeOverride ?? systemScheme) === 'dark';
 
@@ -84,40 +102,111 @@ export default function MapScreen() {
   const initialLat =
     activeLocation?.lat && activeLocation.lat !== 0 ? activeLocation.lat : DEFAULT_LAT;
 
-  /**
-   * Fires when the map region finishes changing (pan/zoom/initial load).
-   * event.nativeEvent.bounds = [west, south, east, north]
-   * event.nativeEvent.zoom   = current zoom level
-   */
+  // ---------------------------------------------------------------------------
+  // loadCurrentView — reads the live viewport from the map ref and requests
+  // weather tiles for the visible area (+ one-step boundary padding).
+  // Using the map ref instead of parsing the event payload decouples load
+  // logic from the event stream, which is more reliable across all
+  // interaction types (pan, zoom, rotate, initial render).
+  // ---------------------------------------------------------------------------
+  const loadCurrentView = useCallback(async () => {
+    if (!mapRef.current) return;
+    try {
+      const vs = await mapRef.current.getViewState();
+      const [lonMin, latMin, lonMax, latMax] = vs.bounds;
+      const tileZoom = Math.max(
+        MIN_TILE_ZOOM,
+        Math.min(MAX_TILE_ZOOM, Math.round(vs.zoom))
+      );
+      // One-step padding so data extends slightly beyond the screen edges —
+      // eliminates the hard rectangular cutoff at the viewport boundary.
+      const pad = stepDegForZoom(tileZoom);
+
+      setCurrentZoom(vs.zoom);
+      loadRegion(
+        latMin - pad,
+        latMax + pad,
+        lonMin - pad,
+        lonMax + pad,
+        tileZoom
+      );
+    } catch {
+      // Map may not be ready yet (e.g. called before the style finishes
+      // loading).  onRegionDidChange will take over once the map is live.
+    }
+  }, [loadRegion]);
+
+  // ---------------------------------------------------------------------------
+  // Initial load — triggered when the map style finishes loading.
+  // A short delay lets the Camera apply its initialViewState first.
+  // ---------------------------------------------------------------------------
+  const onMapLoaded = useCallback(() => {
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
+    setTimeout(loadCurrentView, 150);
+  }, [loadCurrentView]);
+
+  // Fallback: if onDidFinishLoadingMap never fires (e.g. in some emulators),
+  // attempt the initial load after 1 s via useEffect.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!initialLoadDone.current) {
+        initialLoadDone.current = true;
+        loadCurrentView();
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [loadCurrentView]);
+
+  // ---------------------------------------------------------------------------
+  // onRegionDidChange — fires whenever the user finishes panning or zooming.
+  // Debounced so we don't fire while the user is still interacting.
+  // ---------------------------------------------------------------------------
   const onRegionDidChange = useCallback(
     (event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
-      const { zoom, bounds } = event.nativeEvent;
-      const [lonMin, latMin, lonMax, latMax] = bounds;
-
-      setCurrentZoom(zoom);
+      // Update zoom immediately (for UI — label/arrow visibility gates)
+      setCurrentZoom(event.nativeEvent.zoom);
 
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      debounceTimer.current = setTimeout(() => {
-        loadRegion(latMin, latMax, lonMin, lonMax, Math.round(zoom));
-      }, LOAD_DEBOUNCE_MS);
+      debounceTimer.current = setTimeout(loadCurrentView, LOAD_DEBOUNCE_MS);
     },
-    [loadRegion]
+    [loadCurrentView]
   );
 
-  const allPoints: GridPoint[] = useMemo(
-    () => Object.values(tiles).flat(),
-    [tiles]
+  // ---------------------------------------------------------------------------
+  // Derived state
+  // ---------------------------------------------------------------------------
+
+  /** Tile zoom snapped to the resolution breakpoints */
+  const currentTileZoom = Math.max(
+    MIN_TILE_ZOOM,
+    Math.min(MAX_TILE_ZOOM, Math.round(currentZoom))
   );
+
+  /** Point count for the status badge (current-zoom tiles only) */
+  const currentZoomPointCount = useMemo(() => {
+    const prefix = `${currentTileZoom}_`;
+    return Object.entries(tiles)
+      .filter(([k]) => k.startsWith(prefix))
+      .reduce((sum, [, pts]) => sum + pts.length, 0);
+  }, [tiles, currentTileZoom]);
+
+  const hasTiles = Object.keys(tiles).length > 0;
   const isLoading = loadingKeys.size > 0;
-  const cellHalfDeg = stepDegForZoom(Math.max(MIN_TILE_ZOOM, Math.min(MAX_TILE_ZOOM, Math.round(currentZoom)))) / 2;
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <View style={styles.container}>
-      {/* Full-screen MapLibre Native map with free vector tiles */}
+      {/* Full-screen MapLibre map with free OpenFreeMap vector tiles */}
       <Map
+        ref={mapRef}
         style={StyleSheet.absoluteFillObject}
         mapStyle={isDark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT}
         onRegionDidChange={onRegionDidChange}
+        onDidFinishLoadingMap={onMapLoaded}
         compass={false}
         logo={false}
         attribution
@@ -131,10 +220,11 @@ export default function MapScreen() {
         />
         <UserLocation />
 
-        {/* Weather data overlay — GeoJSON ShapeSource + fill/symbol native layers */}
-        {allPoints.length > 0 && (
+        {/* Weather overlay — rendered only when at least one tile is loaded */}
+        {hasTiles && (
           <WeatherGridOverlay
-            points={allPoints}
+            tiles={tiles}
+            currentTileZoom={currentTileZoom}
             layer={selectedLayer}
             hour={selectedHour}
             dateStr={selectedDate}
@@ -142,7 +232,6 @@ export default function MapScreen() {
             drone={displayMode === 'score' ? activeDrone : undefined}
             units={units}
             zoom={currentZoom}
-            cellHalfDeg={cellHalfDeg}
           />
         )}
       </Map>
@@ -157,10 +246,14 @@ export default function MapScreen() {
         {isLoading ? (
           <ActivityIndicator size="small" color={colors.tabBarActive} />
         ) : (
-          <MaterialCommunityIcons name="map-check" size={18} color={colors.tabBarActive} />
+          <MaterialCommunityIcons
+            name="map-check"
+            size={18}
+            color={colors.tabBarActive}
+          />
         )}
         <Text style={[styles.topBarText, { color: colors.textPrimary }]}>
-          {isLoading ? 'Loading…' : `${allPoints.length} pts`}
+          {isLoading ? 'Loading…' : `${currentZoomPointCount} pts`}
         </Text>
       </View>
 
@@ -219,6 +312,10 @@ export default function MapScreen() {
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

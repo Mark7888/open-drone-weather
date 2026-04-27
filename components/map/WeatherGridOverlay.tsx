@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
-import type { FeatureCollection } from 'geojson';
+import type { FeatureCollection, Feature, Point } from 'geojson';
 import {
   GeoJSONSource,
   Layer,
   ViewAnnotation,
   type Expression,
-  type FillLayerProps,
+  type CircleLayerProps,
   type SymbolLayerProps,
 } from '@maplibre/maplibre-react-native';
 import { GridPoint, MapLayer, MapDisplayMode, DroneProfile, UnitsSettings } from '../../types';
@@ -17,34 +17,107 @@ import {
 } from '../../lib/utils/mapColors';
 import WindArrow from './WindArrow';
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Minimum map zoom at which text labels and wind arrows are drawn */
+const LABEL_MIN_ZOOM = 9;
+
+/** White overlay text / arrow colour */
+const OVERLAY_TEXT_COLOR = '#FFFFFF';
+
+/**
+ * circleBlur = 0.7 means the outer 70 % of every circle fades from full
+ * opacity to transparent.  Adjacent circles of similar colour blend smoothly;
+ * the outer boundary of the data area fades out naturally instead of cutting
+ * off with a hard rectangle.  Raise toward 1.0 for a softer look; lower
+ * toward 0 for sharper cell boundaries.
+ */
+const CIRCLE_BLUR_FACTOR = 0.7;
+
+const isWindLayer = (layer: MapLayer) =>
+  layer === 'wind_10m' || layer === 'wind_80m' || layer === 'wind_120m';
+
+// ---------------------------------------------------------------------------
+// Circle radius interpolation
+//
+// Weather data is loaded at four resolution levels (tileZoom → stepDeg):
+//   zoom 5 → 0.4°   zoom 7 → 0.2°   zoom 9 → 0.1°   zoom 11 → 0.05°
+//
+// Circle radius must cover (stepDeg/2) degrees at the current screen zoom.
+// At screen zoom Z: pixels_per_degree = 256 × 2^Z / 360
+// half-step in pixels = (stepDeg/2) × pixels_per_degree
+// With a ×1.3 expansion to ensure overlap:
+//   zoom 5  → half=0.20° → 0.20 × (256×32/360)  × 1.3 ≈  6 px
+//   zoom 7  → half=0.10° → 0.10 × (256×128/360) × 1.3 ≈ 12 px
+//   zoom 9  → half=0.05° → 0.05 × (256×512/360) × 1.3 ≈ 24 px
+//   zoom 11 → half=0.025°→ 0.025×(256×2048/360) × 1.3 ≈ 47 px
+//
+// The exponential-2 interpolation matches the doubling of tile pixel density
+// at each zoom level, so in-between zooms are handled correctly.
+// ---------------------------------------------------------------------------
+const CIRCLE_RADIUS_EXPR: Expression = [
+  'interpolate', ['exponential', 2], ['zoom'],
+  5, 6,
+  7, 12,
+  9, 24,
+  11, 47,
+];
+
+// ---------------------------------------------------------------------------
+// Static style objects (defined outside the component to avoid re-creation)
+// ---------------------------------------------------------------------------
+
+const circleStyle: CircleLayerProps['style'] = {
+  // Data-driven fill colour stored in the feature's `fillColor` property
+  circleColor: ['get', 'fillColor'] as unknown as string,
+  circleRadius: CIRCLE_RADIUS_EXPR as unknown as number,
+  circleBlur: CIRCLE_BLUR_FACTOR,
+  circleOpacity: 0.85,
+  // "map" keeps circles pinned to the geographic surface (not the screen)
+  // when the user tilts the map, giving correct overlay behaviour.
+  circlePitchAlignment: 'map',
+  circleStrokeWidth: 0,
+};
+
+const labelStyle: SymbolLayerProps['style'] = {
+  textField: ['get', 'label'] as unknown as string,
+  textSize: 11,
+  textColor: OVERLAY_TEXT_COLOR,
+  textHaloColor: 'rgba(0,0,0,0.75)',
+  textHaloWidth: 1.5,
+  textFont: ['Open Sans Regular', 'Arial Unicode MS Regular'] as unknown as string[],
+  textAnchor: 'center',
+  textAllowOverlap: false,
+  textIgnorePlacement: false,
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 interface WeatherGridOverlayProps {
-  points: GridPoint[];
+  /** All loaded weather tiles, keyed by "zoom_x_y" */
+  tiles: Record<string, GridPoint[]>;
+  /**
+   * The tile zoom that matches the current map zoom (5 | 7 | 9 | 11).
+   * Used to select which tiles to render so that cell sizes are always correct.
+   */
+  currentTileZoom: number;
   layer: MapLayer;
   hour: number;
   dateStr: string;
   displayMode: MapDisplayMode;
   drone?: DroneProfile;
   units: UnitsSettings;
-  /** Current map zoom level (float) */
+  /** Current map zoom (float) — gates label/arrow visibility */
   zoom: number;
-  /** Half-cell size in degrees — determines polygon size */
-  cellHalfDeg: number;
 }
 
-const isWindLayer = (layer: MapLayer) =>
-  layer === 'wind_10m' || layer === 'wind_80m' || layer === 'wind_120m';
-
-/** Color applied to all wind direction arrows */
-const WIND_ARROW_COLOR = '#FFFFFF';
-
-type GeoJsonFeature = {
-  type: 'Feature';
-  geometry: { type: 'Polygon' | 'Point'; coordinates: any };
-  properties: Record<string, any>;
-};
-
 export default function WeatherGridOverlay({
-  points,
+  tiles,
+  currentTileZoom,
   layer,
   hour,
   dateStr,
@@ -52,117 +125,111 @@ export default function WeatherGridOverlay({
   drone,
   units,
   zoom,
-  cellHalfDeg,
 }: WeatherGridOverlayProps) {
   const targetPrefix = `${dateStr}T${String(hour).padStart(2, '0')}`;
+  const showLabels = zoom >= LABEL_MIN_ZOOM;
+  const showArrows = isWindLayer(layer) && zoom >= LABEL_MIN_ZOOM;
 
-  // Wind arrows only appear at zoom >= 9 (manageable marker count)
-  const showArrows = isWindLayer(layer) && zoom >= 9;
+  const { circleCollection, labelCollection, windPoints } = useMemo(() => {
+    const currentZoomPrefix = `${currentTileZoom}_`;
 
-  /**
-   * Build GeoJSON FeatureCollections from weather grid points.
-   *
-   * - fillCollection  → polygon cell per grid point, colored by layer value
-   * - labelCollection → point at cell centre with formatted label text
-   * - windPoints      → raw array driving SVG wind direction markers
-   *
-   * All three are memoised; they only rebuild when weather data or display
-   * settings change, not on every render.
-   */
-  const { fillCollection, labelCollection, windPoints } = useMemo(() => {
-    const fillFeatures: GeoJsonFeature[] = [];
-    const labelFeatures: GeoJsonFeature[] = [];
+    // Prefer tiles that match the current zoom level so the circle radius
+    // interpolation is correct.  Fall back to any loaded tiles while the
+    // current-zoom tiles are still loading (shows placeholder data rather
+    // than a blank map during zoom-level transitions).
+    const hasCurrentZoomTiles = Object.keys(tiles).some((k) =>
+      k.startsWith(currentZoomPrefix)
+    );
+    const entries = Object.entries(tiles).filter(([key]) =>
+      hasCurrentZoomTiles ? key.startsWith(currentZoomPrefix) : true
+    );
+
+    const circleFeatures: Feature<Point>[] = [];
+    const labelFeatures: Feature<Point>[] = [];
     const windPts: Array<{ lat: number; lon: number; speed: number; dir: number }> = [];
 
-    for (const pt of points) {
-      const weather = pt.hourly.find((h) => h.time.startsWith(targetPrefix));
-      if (!weather) continue;
+    // Deduplicate points that appear in both adjacent tiles (shared boundary)
+    const seenKeys = new Set<string>();
 
-      const value = getLayerValue(layer, weather, drone);
-      const fillColor = getLayerColor(layer, value, displayMode, weather, drone);
-      const half = cellHalfDeg;
+    for (const [, points] of entries) {
+      for (const pt of points) {
+        const ptKey = `${pt.lat},${pt.lon}`;
+        if (seenKeys.has(ptKey)) continue;
+        seenKeys.add(ptKey);
 
-      // Polygon cell — coordinates in GeoJSON [lon, lat] order, ring closed
-      fillFeatures.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [
-            [
-              [pt.lon - half, pt.lat - half],
-              [pt.lon + half, pt.lat - half],
-              [pt.lon + half, pt.lat + half],
-              [pt.lon - half, pt.lat + half],
-              [pt.lon - half, pt.lat - half],
-            ],
-          ],
-        },
-        properties: { fillColor },
-      });
+        const weather = pt.hourly.find((h) => h.time.startsWith(targetPrefix));
+        if (!weather) continue;
 
-      // Point for text label
-      labelFeatures.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [pt.lon, pt.lat] },
-        properties: { label: getLayerLabel(layer, value, units, weather) },
-      });
+        const value = getLayerValue(layer, weather, drone);
+        const fillColor = getLayerColor(layer, value, displayMode, weather, drone);
 
-      if (showArrows) {
-        windPts.push({ lat: pt.lat, lon: pt.lon, speed: value, dir: getWindDirection(layer, weather) });
+        circleFeatures.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [pt.lon, pt.lat] },
+          properties: { fillColor },
+        });
+
+        if (showLabels) {
+          labelFeatures.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [pt.lon, pt.lat] },
+            properties: { label: getLayerLabel(layer, value, units, weather) },
+          });
+        }
+
+        if (showArrows) {
+          windPts.push({
+            lat: pt.lat,
+            lon: pt.lon,
+            speed: value,
+            dir: getWindDirection(layer, weather),
+          });
+        }
       }
     }
 
-    // Use imported FeatureCollection type from 'geojson' so no unsafe cast is needed
-    const fillCollection: FeatureCollection = { type: 'FeatureCollection', features: fillFeatures as any };
-    const labelCollection: FeatureCollection = { type: 'FeatureCollection', features: labelFeatures as any };
-    return { fillCollection, labelCollection, windPoints: windPts };
-  }, [points, layer, targetPrefix, displayMode, drone, units, cellHalfDeg, showArrows]);
-
-  // Use MapLibre Expression type for data-driven style expressions
-  const GET_FILL_COLOR: Expression = ['get', 'fillColor'];
-  const GET_LABEL: Expression = ['get', 'label'];
-
-  const fillStyle: FillLayerProps['style'] = {
-    fillColor: GET_FILL_COLOR,
-    fillOpacity: 1,
-    // Transparent outline so cells blend edge-to-edge without hairlines
-    fillOutlineColor: 'rgba(0,0,0,0)',
-  };
-
-  const labelStyle: SymbolLayerProps['style'] = {
-    textField: GET_LABEL,
-    textSize: 11,
-    textColor: WIND_ARROW_COLOR,
-    textHaloColor: 'rgba(0,0,0,0.75)',
-    textHaloWidth: 1.5,
-    textFont: ['Open Sans Regular', 'Arial Unicode MS Regular'] as any,
-    textAnchor: 'center',
-    textAllowOverlap: false,
-    textIgnorePlacement: false,
-  };
+    const circleCollection: FeatureCollection<Point> = {
+      type: 'FeatureCollection',
+      features: circleFeatures,
+    };
+    const labelCollection: FeatureCollection<Point> = {
+      type: 'FeatureCollection',
+      features: labelFeatures,
+    };
+    return { circleCollection, labelCollection, windPoints: windPts };
+  }, [tiles, currentTileZoom, layer, targetPrefix, displayMode, drone, units, showLabels, showArrows]);
 
   return (
     <>
       {/* ------------------------------------------------------------------ */}
-      {/* Colored fill cells — rendered natively by MapLibre GL engine.       */}
-      {/* A single GeoJSONSource drives thousands of polygons without any      */}
-      {/* per-cell React component overhead.                                   */}
+      {/* Smooth weather colour fill                                          */}
+      {/*                                                                     */}
+      {/* Each grid point becomes a blurry circle whose radius is derived     */}
+      {/* from the tile zoom via an exponential interpolation (CIRCLE_RADIUS  */}
+      {/* _EXPR).  Adjacent circles overlap and their semi-transparent edges  */}
+      {/* blend together — mimicking the smooth gradient look of weather       */}
+      {/* radar maps without any server-side rendering.                       */}
       {/* ------------------------------------------------------------------ */}
-      <GeoJSONSource id="weather-fill-src" data={fillCollection}>
-        <Layer type="fill" id="weather-fill-layer" style={fillStyle} />
+      <GeoJSONSource id="weather-circle-src" data={circleCollection}>
+        <Layer type="circle" id="weather-circle-layer" style={circleStyle} />
       </GeoJSONSource>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Value labels — native MapLibre SymbolLayer with collision detection. */}
-      {/* Shown automatically at zoom >= 9 via minzoom on the layer.          */}
+      {/* Value labels — native SymbolLayer with built-in collision avoidance */}
+      {/* Only visible at zoom ≥ 9 (set via minzoom prop on the layer).      */}
       {/* ------------------------------------------------------------------ */}
       <GeoJSONSource id="weather-label-src" data={labelCollection}>
-        <Layer type="symbol" id="weather-label-layer" minzoom={9} style={labelStyle} />
+        <Layer
+          type="symbol"
+          id="weather-label-layer"
+          minzoom={LABEL_MIN_ZOOM}
+          style={labelStyle}
+        />
       </GeoJSONSource>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Wind direction arrows — SVG WindArrow inside ViewAnnotation.        */}
-      {/* Only shown at zoom >= 9 to keep marker count manageable.           */}
+      {/* Wind direction arrows                                               */}
+      {/* SVG WindArrow inside ViewAnnotation; only shown at zoom ≥ 9.       */}
       {/* ------------------------------------------------------------------ */}
       {showArrows &&
         windPoints.map((pt, i) => (
@@ -170,7 +237,12 @@ export default function WeatherGridOverlay({
             key={`wind-${i}-${pt.lat.toFixed(4)}-${pt.lon.toFixed(4)}`}
             lngLat={[pt.lon, pt.lat]}
           >
-            <WindArrow speed={pt.speed} direction={pt.dir} color={WIND_ARROW_COLOR} size={24} />
+            <WindArrow
+              speed={pt.speed}
+              direction={pt.dir}
+              color={OVERLAY_TEXT_COLOR}
+              size={24}
+            />
           </ViewAnnotation>
         ))}
     </>
