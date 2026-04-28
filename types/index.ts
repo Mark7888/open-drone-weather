@@ -100,3 +100,32 @@ export interface UnitsSettings {
   wind: WindUnit;
   distance: DistanceUnit;
 }
+
+// Map feature
+export type MapLayer =
+  | 'temperature'
+  | 'humidity'
+  | 'cloudCover'
+  | 'visibility'
+  | 'precipitationProbability'
+  | 'windSpeed10m'
+  | 'windSpeed80m'
+  | 'windSpeed120m'
+  | 'score';
+
+export type MapDisplayMode = 'weather' | 'drone';
+
+export type WindAltitude = '10m' | '80m' | '120m';
+
+export interface GridPoint {
+  lat: number;
+  lon: number;
+  weather: HourlyWeather[]; // hourly forecast array (up to 16 days × 24 hours)
+  fetchedAt: number;
+}
+
+export interface GridWeatherData {
+  points: GridPoint[];
+  boundingBox: { minLat: number; maxLat: number; minLon: number; maxLon: number };
+  fetchedAt: number;
+}

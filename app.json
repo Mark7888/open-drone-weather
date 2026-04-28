@@ -33,6 +33,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
+      "@maplibre/maplibre-react-native",
       [
         "expo-build-properties",
         {
