@@ -2,10 +2,12 @@ import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getColors } from '../../theme/colors';
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
   const colors = getColors(themeOverride, systemScheme);
@@ -29,7 +31,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Forecast',
+          title: t('tabs.forecast'),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="calendar-month" color={color} size={size} />
           ),
@@ -38,7 +40,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="drones"
         options={{
-          title: 'Drones',
+          title: t('tabs.drones'),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="quadcopter" color={color} size={size} />
           ),
@@ -47,7 +49,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('tabs.settings'),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="cog" color={color} size={size} />
           ),

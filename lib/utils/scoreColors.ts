@@ -9,11 +9,11 @@ export function scoreToColor(score: number): string {
 }
 
 export function scoreToLabel(score: number): string {
-  if (score >= 85) return 'Excellent';
-  if (score >= 65) return 'Good';
-  if (score >= 40) return 'Marginal';
-  if (score >= 1) return 'Poor';
-  return 'Blocked';
+  if (score >= 85) return 'scoreLabels.excellent';
+  if (score >= 65) return 'scoreLabels.good';
+  if (score >= 40) return 'scoreLabels.fair';
+  if (score >= 1) return 'scoreLabels.poor';
+  return 'scoreLabels.noFly';
 }
 
 /**
