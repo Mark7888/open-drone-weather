@@ -148,7 +148,8 @@
     "snowShowers": "Snow Showers",
     "thunderstorm": "Thunderstorm",
     "lightThunderstormWithHail": "Light Thunderstorms With Hail",
-    "thunderstormWithHail": "Thunderstorm With Hail"
+    "thunderstormWithHail": "Thunderstorm With Hail",
+    "unknown": "Unknown weather condition"
   },
   "scoreLabels": {
     "excellent": "Excellent",

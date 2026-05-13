@@ -56,7 +56,6 @@ export function getWmoInfo(
 ): { descriptionKey: string; icon: string } {
   const entry = WMO_DATA[code];
   if (!entry) {
-    return { descriptionKey: `WMO ${code}`, icon: 'weather-cloudy' };
-  }
-  return isNight ? entry.night : entry.day;
+    return { descriptionKey: 'wmo.unknown', icon: 'weather-cloudy' };
+  }  return isNight ? entry.night : entry.day;
 }
