@@ -10,6 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { useColorScheme } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useWeatherStore } from '../../store/weatherStore';
@@ -20,6 +21,7 @@ import { ThemeOverride, TemperatureUnit, WindUnit, DistanceUnit } from '../../ty
 import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const systemScheme = useColorScheme();
   const {
     themeOverride,
@@ -27,6 +29,7 @@ export default function SettingsScreen() {
     nightFlyingEnabled,
     hideDronePresets,
     units,
+    language,
     setThemeOverride,
     setGoldenHourEnabled,
     setNightFlyingEnabled,
@@ -34,6 +37,7 @@ export default function SettingsScreen() {
     setTemperatureUnit,
     setWindUnit,
     setDistanceUnit,
+    setLanguage,
   } = useSettingsStore();
   const colors = getColors(themeOverride, systemScheme);
   const lastFetched = useWeatherStore((s) => s.lastFetched);
@@ -47,19 +51,19 @@ export default function SettingsScreen() {
 
   async function handleClearCache() {
     Alert.alert(
-      'Clear weather cache',
-      'This will delete all cached weather data. Forecasts will reload from the internet on next open.',
+      t('settings.clearCacheTitle'),
+      t('settings.clearCacheMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('settings.clearCacheCancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('settings.clearCacheConfirm'),
           style: 'destructive',
           onPress: () => {
             clearAllCache();
             useWeatherStore.setState({ data: null, lastFetched: null });
             const info = getCacheInfo();
             setCacheInfo(info);
-            Alert.alert('Done', 'Weather cache cleared.');
+            Alert.alert(t('settings.clearCacheDoneTitle'), t('settings.clearCacheDoneMessage'));
           },
         },
       ]
@@ -71,22 +75,22 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.titleBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>Settings</Text>
+        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>{t('settings.screenTitle')}</Text>
       </View>
 
       <ScrollView>
         {/* DISPLAY */}
-        <SectionHeader label="Display" colors={colors} />
+        <SectionHeader label={t('settings.sectionDisplay')} colors={colors} />
 
         <SettingRow
-          label="Theme"
+          label={t('settings.theme')}
           colors={colors}
         >
           <SegmentedControl
             options={[
-              { label: 'System', value: 'system' },
-              { label: 'Light', value: 'light' },
-              { label: 'Dark', value: 'dark' },
+              { label: t('settings.themeSystem'), value: 'system' },
+              { label: t('settings.themeLight'), value: 'light' },
+              { label: t('settings.themeDark'), value: 'dark' },
             ]}
             selected={themeOverride}
             onChange={(v) => setThemeOverride(v as ThemeOverride)}
@@ -95,7 +99,7 @@ export default function SettingsScreen() {
         </SettingRow>
 
         <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Show Golden Hour</Text>
+          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.showGoldenHour')}</Text>
           <Switch
             value={goldenHourEnabled}
             onValueChange={setGoldenHourEnabled}
@@ -105,9 +109,9 @@ export default function SettingsScreen() {
 
         <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Enable Night Flying</Text>
+            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.enableNightFlying')}</Text>
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-              When off, night hours are blocked
+              {t('settings.nightFlyingSubtext')}
             </Text>
           </View>
           <Switch
@@ -119,9 +123,9 @@ export default function SettingsScreen() {
 
         <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Hide Drone Presets</Text>
+            <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.hideDronePresets')}</Text>
             <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-              Hide built-in DJI presets in the Drone Profiles tab
+              {t('settings.hideDronePresetsSubtext')}
             </Text>
           </View>
           <Switch
@@ -132,9 +136,9 @@ export default function SettingsScreen() {
         </View>
 
         {/* UNITS */}
-        <SectionHeader label="Units" colors={colors} />
+        <SectionHeader label={t('settings.sectionUnits')} colors={colors} />
 
-        <SettingRow label="Temperature" colors={colors}>
+        <SettingRow label={t('settings.temperature')} colors={colors}>
           <SegmentedControl
             options={[
               { label: '°C', value: 'C' },
@@ -146,7 +150,7 @@ export default function SettingsScreen() {
           />
         </SettingRow>
 
-        <SettingRow label="Wind Speed" colors={colors}>
+        <SettingRow label={t('settings.windSpeed')} colors={colors}>
           <SegmentedControl
             options={[
               { label: 'km/h', value: 'kmh' },
@@ -159,7 +163,7 @@ export default function SettingsScreen() {
           />
         </SettingRow>
 
-        <SettingRow label="Distance" colors={colors}>
+        <SettingRow label={t('settings.distance')} colors={colors}>
           <SegmentedControl
             options={[
               { label: 'km', value: 'km' },
@@ -171,15 +175,26 @@ export default function SettingsScreen() {
           />
         </SettingRow>
 
+        {/* LANGUAGE */}
+        <SectionHeader label={t('settings.sectionLanguage')} colors={colors} />
+
+        <SettingRow label={t('settings.language')} colors={colors}>
+          <LanguagePicker
+            selected={language}
+            onChange={setLanguage}
+            colors={colors}
+          />
+        </SettingRow>
+
         {/* DATA & CACHE */}
-        <SectionHeader label="Data & Cache" colors={colors} />
+        <SectionHeader label={t('settings.sectionDataCache')} colors={colors} />
 
         <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Cache status</Text>
+          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.cacheStatus')}</Text>
           <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
             {cacheInfo.lastUpdated
-              ? `Updated ${formatCacheTime(cacheInfo.lastUpdated)}`
-              : 'No cache'}
+              ? t('settings.cacheUpdated', { time: formatCacheTime(cacheInfo.lastUpdated) })
+              : t('settings.cacheEmpty')}
           </Text>
         </View>
 
@@ -188,14 +203,14 @@ export default function SettingsScreen() {
           onPress={handleClearCache}
         >
           <MaterialCommunityIcons name="delete-sweep-outline" size={18} color="#F44336" />
-          <Text style={[styles.actionLabel, { color: '#F44336' }]}>Clear weather cache</Text>
+          <Text style={[styles.actionLabel, { color: '#F44336' }]}>{t('settings.clearCache')}</Text>
         </TouchableOpacity>
 
         {/* ABOUT */}
-        <SectionHeader label="About" colors={colors} />
+        <SectionHeader label={t('settings.sectionAbout')} colors={colors} />
 
         <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Version</Text>
+          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>{t('settings.version')}</Text>
           <Text style={[styles.infoValue, { color: colors.textSecondary }]}>{appVersion}</Text>
         </View>
 
@@ -205,7 +220,7 @@ export default function SettingsScreen() {
         >
           <MaterialCommunityIcons name="coffee" size={16} color={colors.tabBarActive} />
           <Text style={[styles.actionLabel, { color: colors.tabBarActive }]}>
-            Support my work — Buy me a coffee
+            {t('settings.supportWork')}
           </Text>
         </TouchableOpacity>
 
@@ -215,7 +230,7 @@ export default function SettingsScreen() {
         >
           <MaterialCommunityIcons name="github" size={16} color={colors.tabBarActive} />
           <Text style={[styles.actionLabel, { color: colors.tabBarActive }]}>
-            View source on GitHub
+            {t('settings.viewSource')}
           </Text>
         </TouchableOpacity>
 
@@ -225,11 +240,27 @@ export default function SettingsScreen() {
         >
           <MaterialCommunityIcons name="open-in-new" size={16} color={colors.tabBarActive} />
           <Text style={[styles.actionLabel, { color: colors.tabBarActive }]}>
-            Weather data by Open-Meteo
+            {t('settings.weatherData')}
           </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
+  );
+}
+
+function LanguagePicker({ selected, onChange, colors }: { selected: string; onChange: (v: string) => void; colors: any }) {
+  const { t } = useTranslation();
+  const LANGUAGE_OPTIONS = [
+    { label: t('settings.languageSystem'), value: 'system' },
+    { label: 'English', value: 'en' },
+  ];
+  return (
+    <SegmentedControl
+      options={LANGUAGE_OPTIONS}
+      selected={selected}
+      onChange={onChange}
+      colors={colors}
+    />
   );
 }
 

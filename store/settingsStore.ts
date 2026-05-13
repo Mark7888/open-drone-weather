@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
+import * as Localization from 'expo-localization';
+import i18n from '../lib/i18n';
 import { ThemeOverride, UnitsSettings } from '../types';
 
 // Custom storage adapter for expo-secure-store
@@ -35,6 +37,7 @@ interface SettingsState {
   goldenHourEnabled: boolean;
   nightFlyingEnabled: boolean;
   hideDronePresets: boolean;
+  language: string;
   setTemperatureUnit: (unit: UnitsSettings['temperature']) => void;
   setWindUnit: (unit: UnitsSettings['wind']) => void;
   setDistanceUnit: (unit: UnitsSettings['distance']) => void;
@@ -42,6 +45,7 @@ interface SettingsState {
   setGoldenHourEnabled: (enabled: boolean) => void;
   setNightFlyingEnabled: (enabled: boolean) => void;
   setHideDronePresets: (enabled: boolean) => void;
+  setLanguage: (lang: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -52,6 +56,7 @@ export const useSettingsStore = create<SettingsState>()(
       goldenHourEnabled: true,
       nightFlyingEnabled: false,
       hideDronePresets: false,
+      language: 'system',
       setTemperatureUnit: (unit) => set((s) => ({ units: { ...s.units, temperature: unit } })),
       setWindUnit: (unit) => set((s) => ({ units: { ...s.units, wind: unit } })),
       setDistanceUnit: (unit) => set((s) => ({ units: { ...s.units, distance: unit } })),
@@ -59,6 +64,14 @@ export const useSettingsStore = create<SettingsState>()(
       setGoldenHourEnabled: (enabled) => set({ goldenHourEnabled: enabled }),
       setNightFlyingEnabled: (enabled) => set({ nightFlyingEnabled: enabled }),
       setHideDronePresets: (enabled) => set({ hideDronePresets: enabled }),
+      setLanguage: (lang) => {
+        set({ language: lang });
+        if (lang === 'system') {
+          i18n.changeLanguage(Localization.getLocales()[0]?.languageCode ?? 'en');
+        } else {
+          i18n.changeLanguage(lang);
+        }
+      },
     }),
     {
       name: 'opendroneweather-settings',

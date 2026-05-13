@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWeatherStore } from '../../store/weatherStore';
 import { useDroneStore } from '../../store/droneStore';
@@ -30,9 +31,18 @@ const DAY_GAP_V = 3;
 const DAYS_PER_ROW = 7;
 const HEADER_ROW_HEIGHT = 20;
 const DAY_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - DAY_GAP_H * (DAYS_PER_ROW - 1)) / DAYS_PER_ROW;
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function CalendarScreen() {
+  const { t } = useTranslation();
+  const WEEKDAYS = [
+    t('forecast.weekdays.mon'),
+    t('forecast.weekdays.tue'),
+    t('forecast.weekdays.wed'),
+    t('forecast.weekdays.thu'),
+    t('forecast.weekdays.fri'),
+    t('forecast.weekdays.sat'),
+    t('forecast.weekdays.sun'),
+  ];
   const router = useRouter();
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
@@ -233,7 +243,7 @@ export default function CalendarScreen() {
   }
 
   const locationDisplayName =
-    activeLocation?.customName ?? activeLocation?.placeName ?? 'Select location';
+    activeLocation?.customName ?? activeLocation?.placeName ?? t('forecast.selectLocation');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -265,7 +275,7 @@ export default function CalendarScreen() {
         >
           <MaterialCommunityIcons name="quadcopter" size={18} color={colors.tabBarActive} />
           <Text style={[styles.droneName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {activeDrone?.name ?? 'Select drone'}
+            {activeDrone?.name ?? t('forecast.selectDrone')}
           </Text>
           <MaterialCommunityIcons
             name={dronePickerOpen ? 'chevron-up' : 'chevron-down'}
@@ -307,7 +317,9 @@ export default function CalendarScreen() {
           <View style={[styles.offlineBanner, { backgroundColor: colors.surfaceElevated }]}>
             <MaterialCommunityIcons name="wifi-off" size={14} color={colors.textSecondary} />
             <Text style={[styles.offlineText, { color: colors.textSecondary }]}>
-              Offline — showing data from {lastFetched ? formatCacheTime(lastFetched) : 'cache'}
+              {lastFetched
+                ? t('forecast.offlineBanner', { time: formatCacheTime(lastFetched) })
+                : t('forecast.offlineBannerNoTime')}
             </Text>
           </View>
         )}
@@ -358,7 +370,7 @@ export default function CalendarScreen() {
             <View style={styles.bestDayContent}>
               <MaterialCommunityIcons name="star" size={16} color="#FFC107" />
               <Text style={[styles.bestDayText, { color: colors.textPrimary }]}>
-                Best day to fly:{' '}
+                {t('forecast.bestDayToFly')}{' '}
                 <Text style={{ fontWeight: '600' }}>
                   {formatDateLong(new Date(bestDay.date + 'T12:00:00'))}
                 </Text>
@@ -368,7 +380,7 @@ export default function CalendarScreen() {
             <View style={styles.bestDayContent}>
               <MaterialCommunityIcons name="weather-cloudy" size={16} color={colors.textSecondary} />
               <Text style={[styles.bestDayText, { color: colors.textSecondary }]}>
-                None of the days are good to fly
+                {t('forecast.noneGoodToFly')}
               </Text>
             </View>
           )}
@@ -376,7 +388,7 @@ export default function CalendarScreen() {
           {goodDays.length > 0 && (
             <View style={styles.goodDaysList}>
               <Text style={[styles.goodDaysHeader, { color: colors.textSecondary }]}>
-                Also good to fly:
+                {t('forecast.alsoGoodToFly')}
               </Text>
               {goodDays.map((day) => (
                 <View key={day.date} style={styles.goodDayRow}>
@@ -395,18 +407,19 @@ export default function CalendarScreen() {
 }
 
 function NoDataScreen({ onRetry, colors }: { onRetry: () => void; colors: any }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.noDataContainer, { backgroundColor: colors.background }]}>
       <MaterialCommunityIcons name="cloud-off-outline" size={72} color={colors.textSecondary} />
-      <Text style={[styles.noDataTitle, { color: colors.textPrimary }]}>No forecast data</Text>
+      <Text style={[styles.noDataTitle, { color: colors.textPrimary }]}>{t('forecast.noForecastTitle')}</Text>
       <Text style={[styles.noDataBody, { color: colors.textSecondary }]}>
-        Connect to the internet to load the weather forecast for your location.
+        {t('forecast.noForecastBody')}
       </Text>
       <TouchableOpacity
         style={[styles.retryButton, { backgroundColor: colors.tabBarActive }]}
         onPress={onRetry}
       >
-        <Text style={styles.retryButtonText}>Retry</Text>
+        <Text style={styles.retryButtonText}>{t('forecast.retry')}</Text>
       </TouchableOpacity>
     </View>
   );

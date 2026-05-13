@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { useColorScheme } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDroneStore } from '../../store/droneStore';
@@ -35,6 +36,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function DronesScreen() {
+  const { t } = useTranslation();
   const systemScheme = useColorScheme();
   const themeOverride = useSettingsStore((s) => s.themeOverride);
   const hideDronePresets = useSettingsStore((s) => s.hideDronePresets);
@@ -69,7 +71,7 @@ export default function DronesScreen() {
 
   function openCreate() {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, name: t('drones.defaultDroneName') });
     setModalVisible(true);
   }
 
@@ -92,7 +94,7 @@ export default function DronesScreen() {
 
   function saveForm() {
     if (!form.name.trim()) {
-      Alert.alert('Validation', 'Please enter a drone name.');
+      Alert.alert(t('drones.validationTitle'), t('drones.validationNameRequired'));
       return;
     }
     if (editingId) {
@@ -109,10 +111,10 @@ export default function DronesScreen() {
   }
 
   function confirmDelete(id: string, name: string) {
-    Alert.alert('Delete drone', `Delete "${name}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('drones.deleteTitle'), t('drones.deleteMessage', { name }), [
+      { text: t('drones.deleteCancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('drones.deleteConfirm'),
         style: 'destructive',
         onPress: () => deleteProfile(id),
       },
@@ -136,20 +138,20 @@ export default function DronesScreen() {
         ]}
       >
         <TouchableOpacity style={styles.profileTouchable} onPress={() => setActiveDrone(item.id)} onLongPress={() => {
-          Alert.alert(item.name, 'Duplicate as custom profile?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Duplicate', onPress: () => duplicatePreset(item.id) },
+          Alert.alert(item.name, t('drones.duplicateTitle'), [
+            { text: t('drones.duplicateCancel'), style: 'cancel' },
+            { text: t('drones.duplicateConfirm'), onPress: () => duplicatePreset(item.id) },
           ]);
         }}>
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
               <Text style={[styles.profileName, { color: colors.textPrimary }]}>{item.name}</Text>
               <View style={[styles.presetBadge, { backgroundColor: colors.border }]}>
-                <Text style={[styles.presetBadgeText, { color: colors.textSecondary }]}>Preset</Text>
+                <Text style={[styles.presetBadgeText, { color: colors.textSecondary }]}>{t('drones.presetBadge')}</Text>
               </View>
             </View>
             <Text style={[styles.profileSpec, { color: colors.textSecondary }]}>
-              Max wind: {item.maxWindSpeed80m} km/h · Gust: {item.maxGustSpeed} km/h
+              {t('drones.maxWindSpec', { wind: item.maxWindSpeed80m, gust: item.maxGustSpeed })}
             </Text>
           </View>
           {isActive && <MaterialCommunityIcons name="check-circle" size={20} color={colors.tabBarActive} />}
@@ -173,7 +175,7 @@ export default function DronesScreen() {
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: colors.textPrimary }]}>{item.name}</Text>
             <Text style={[styles.profileSpec, { color: colors.textSecondary }]}>
-              Max wind: {item.maxWindSpeed80m} km/h · Gust: {item.maxGustSpeed} km/h
+              {t('drones.maxWindSpec', { wind: item.maxWindSpeed80m, gust: item.maxGustSpeed })}
             </Text>
           </View>
           <View style={styles.profileActions}>
@@ -194,7 +196,7 @@ export default function DronesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Screen header */}
       <View style={[styles.titleBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>Drone Profiles</Text>
+        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>{t('drones.screenTitle')}</Text>
         <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.tabBarActive }]} onPress={openCreate}>
           <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" />
         </TouchableOpacity>
@@ -203,33 +205,33 @@ export default function DronesScreen() {
       <ScrollView>
         {!hideDronePresets && presets.length > 0 && (
           <>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>Presets</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('drones.sectionPresets')}</Text>
             {presets.map(renderPreset)}
           </>
         )}
 
         {customs.length > 0 && (
           <>
-            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>Custom</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('drones.sectionCustom')}</Text>
             {customs.map(renderCustom)}
           </>
         )}
 
         {activePresetHidden && (
-          <Text style={[styles.hint, { color: colors.textSecondary }]}> 
-            {activeProfile?.name} is still selected, but built-in presets are hidden in Settings.
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            {t('drones.hintActivePresetHidden', { name: activeProfile?.name })}
           </Text>
         )}
 
         {!hideDronePresets && presets.length > 0 && (
-          <Text style={[styles.hint, { color: colors.textSecondary }]}> 
-            Long-press a preset to duplicate it as a custom profile.
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            {t('drones.hintLongPressPreset')}
           </Text>
         )}
 
         {hideDronePresets && customs.length === 0 && (
-          <Text style={[styles.hint, { color: colors.textSecondary }]}> 
-            Built-in DJI presets are hidden. Create a custom profile or re-enable presets in Settings.
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            {t('drones.hintPresetsHidden')}
           </Text>
         )}
       </ScrollView>
@@ -250,13 +252,13 @@ export default function DronesScreen() {
             { backgroundColor: colors.surface, borderBottomColor: colors.border, paddingTop: insets.top > 0 ? insets.top + 8 : 16 },
           ]}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>{t('drones.modalCancel')}</Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              {editingId ? 'Edit Drone' : 'New Drone'}
+              {editingId ? t('drones.modalTitleEdit') : t('drones.modalTitleNew')}
             </Text>
             <TouchableOpacity onPress={saveForm}>
-              <Text style={[styles.modalSave, { color: colors.tabBarActive }]}>Save</Text>
+              <Text style={[styles.modalSave, { color: colors.tabBarActive }]}>{t('drones.modalSave')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -267,19 +269,19 @@ export default function DronesScreen() {
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           >
-            <FormField label="Name" value={form.name} onChangeText={(t) => setForm((f) => ({ ...f, name: t }))} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <SectionDivider label="Wind Limits (km/h)" colors={colors} />
-            <NumField label="Max Wind at 10m" value={form.maxWindSpeed10m} onChange={(t) => setNum('maxWindSpeed10m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <NumField label="Max Wind at 80m" value={form.maxWindSpeed80m} onChange={(t) => setNum('maxWindSpeed80m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <NumField label="Max Wind at 120m" value={form.maxWindSpeed120m} onChange={(t) => setNum('maxWindSpeed120m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <NumField label="Max Gust at 80m" value={form.maxGustSpeed} onChange={(t) => setNum('maxGustSpeed', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <SectionDivider label="Temperature (°C)" colors={colors} />
-            <NumField label="Min Temperature" value={form.minTemperature} onChange={(t) => setNum('minTemperature', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <NumField label="Max Temperature" value={form.maxTemperature} onChange={(t) => setNum('maxTemperature', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <NumField label="Optimal Temp Min" value={form.optimalTempMin} onChange={(t) => setNum('optimalTempMin', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <NumField label="Optimal Temp Max" value={form.optimalTempMax} onChange={(t) => setNum('optimalTempMax', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
-            <SectionDivider label="Other" colors={colors} />
-            <NumField label="Max Humidity (%)" value={form.maxHumidity} onChange={(t) => setNum('maxHumidity', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <FormField label={t('drones.fieldName')} value={form.name} onChangeText={(t) => setForm((f) => ({ ...f, name: t }))} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <SectionDivider label={t('drones.sectionWind')} colors={colors} />
+            <NumField label={t('drones.fieldMaxWind10m')} value={form.maxWindSpeed10m} onChange={(t) => setNum('maxWindSpeed10m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label={t('drones.fieldMaxWind80m')} value={form.maxWindSpeed80m} onChange={(t) => setNum('maxWindSpeed80m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label={t('drones.fieldMaxWind120m')} value={form.maxWindSpeed120m} onChange={(t) => setNum('maxWindSpeed120m', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label={t('drones.fieldMaxGust')} value={form.maxGustSpeed} onChange={(t) => setNum('maxGustSpeed', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <SectionDivider label={t('drones.sectionTemperature')} colors={colors} />
+            <NumField label={t('drones.fieldMinTemp')} value={form.minTemperature} onChange={(t) => setNum('minTemperature', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label={t('drones.fieldMaxTemp')} value={form.maxTemperature} onChange={(t) => setNum('maxTemperature', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label={t('drones.fieldOptimalTempMin')} value={form.optimalTempMin} onChange={(t) => setNum('optimalTempMin', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <NumField label={t('drones.fieldOptimalTempMax')} value={form.optimalTempMax} onChange={(t) => setNum('optimalTempMax', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
+            <SectionDivider label={t('drones.sectionOther')} colors={colors} />
+            <NumField label={t('drones.fieldMaxHumidity')} value={form.maxHumidity} onChange={(t) => setNum('maxHumidity', t)} colors={colors} onFocused={scrollToField} fieldPositions={fieldPositions} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>

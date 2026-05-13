@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
@@ -29,6 +30,23 @@ import { convertTemperature, temperatureLabel, convertWind, windLabel, formatVis
 import { getWmoInfo } from '../../lib/utils/wmoUtils';
 import { FactorScore, BlockerReason } from '../../types';
 
+const FACTOR_I18N_KEYS: Record<string, string> = {
+  'Wind at 80m': 'factors.wind80m',
+  'Gusts at 80m': 'factors.gust80m',
+  'Wind at 120m': 'factors.wind120m',
+  'Wind at surface': 'factors.wind10m',
+  'Temperature': 'factors.temperature',
+  'Humidity': 'factors.humidity',
+  'Cloud cover': 'factors.cloudCover',
+  'Visibility': 'factors.visibility',
+  'Rain probability': 'factors.rainProbability',
+  'Weather condition': 'factors.weatherCondition',
+  'Night flying disabled': 'factors.nightFlyingDisabled',
+  'Wind gust at 80m': 'factors.windGust80mBlocker',
+  'Temperature too hot': 'factors.temperatureTooHot',
+  'Temperature too cold': 'factors.temperatureTooCold',
+};
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STRIP_HEIGHT = SCREEN_HEIGHT * 0.45;
 const STRIP_WIDTH = SCREEN_WIDTH;
@@ -37,6 +55,7 @@ const POINTER_LINE_HEIGHT = 2;
 const POINTER_LINE_OFFSET = (POINTER_CONTAINER_HEIGHT - POINTER_LINE_HEIGHT) / 2;
 
 export default function DayDetailScreen() {
+  const { t } = useTranslation();
   const { date: dateStr } = useLocalSearchParams<{ date: string }>();
   const router = useRouter();
   const systemScheme = useColorScheme();
@@ -111,7 +130,7 @@ export default function DayDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.noDataText, { color: colors.textSecondary }]}>No data for this day.</Text>
+        <Text style={[styles.noDataText, { color: colors.textSecondary }]}>{t('day.noData')}</Text>
       </View>
     );
   }
@@ -162,7 +181,7 @@ export default function DayDetailScreen() {
           {bestWindowLabel && (
             <View style={[styles.bestWindowChip, { backgroundColor: scoreToColor(summary.bestWindowScore ?? 0) + '33', borderColor: scoreToColor(summary.bestWindowScore ?? 0) }]}>
               <Text style={[styles.bestWindowText, { color: scoreToColor(summary.bestWindowScore ?? 0) }]}>
-                Best: {bestWindowLabel}
+                {t('day.best', { window: bestWindowLabel })}
               </Text>
             </View>
           )}
@@ -199,15 +218,15 @@ export default function DayDetailScreen() {
           <View style={[styles.nightOverlay, { top: duskY, height: Math.max(0, STRIP_HEIGHT - duskY), opacity: nightFlyingEnabled ? 0.4 : 0.85 }]} />
 
           {/* Sun event markers */}
-          <SunMarker y={sunriseY} label={`Sunrise ${formatTime(summary.sunrise)}`} icon="weather-sunset-up" color="#FFD54F" />
-          <SunMarker y={sunsetY} label={`Sunset ${formatTime(summary.sunset)}`} icon="weather-sunset-down" color="#FF8A65" />
-          <SunMarker y={dawnY} label={`Dawn ${formatTime(summary.dawn)}`} icon="weather-night" color="rgba(180,180,255,0.7)" dashed />
-          <SunMarker y={duskY} label={`Dusk ${formatTime(summary.dusk)}`} icon="weather-night" color="rgba(180,180,255,0.7)" dashed />
+          <SunMarker y={sunriseY} label={t('day.sunrise', { time: formatTime(summary.sunrise) })} icon="weather-sunset-up" color="#FFD54F" />
+          <SunMarker y={sunsetY} label={t('day.sunset', { time: formatTime(summary.sunset) })} icon="weather-sunset-down" color="#FF8A65" />
+          <SunMarker y={dawnY} label={t('day.dawn', { time: formatTime(summary.dawn) })} icon="weather-night" color="rgba(180,180,255,0.7)" dashed />
+          <SunMarker y={duskY} label={t('day.dusk', { time: formatTime(summary.dusk) })} icon="weather-night" color="rgba(180,180,255,0.7)" dashed />
 
           {goldenHourEnabled && (
             <>
-              <SunMarker y={goldenMorningY} label={`Golden hour ends ${formatTime(summary.goldenHourMorningEnd)}`} icon="white-balance-sunny" color="#FFB300" />
-              <SunMarker y={goldenEveningY} label={`Golden hour starts ${formatTime(summary.goldenHourEveningStart)}`} icon="white-balance-sunny" color="#FFB300" />
+              <SunMarker y={goldenMorningY} label={t('day.goldenHourEnds', { time: formatTime(summary.goldenHourMorningEnd) })} icon="white-balance-sunny" color="#FFB300" />
+              <SunMarker y={goldenEveningY} label={t('day.goldenHourStarts', { time: formatTime(summary.goldenHourEveningStart) })} icon="white-balance-sunny" color="#FFB300" />
             </>
           )}
 
@@ -226,17 +245,17 @@ export default function DayDetailScreen() {
           {/* Overall score */}
           <View style={styles.overallScoreRow}>
             <Text style={[styles.overallScoreValue, { color: colors.textPrimary }]}>
-              {currentHourScore.score} / 100
+              {t('day.scoreOutOf', { score: currentHourScore.score })}
             </Text>
             <View style={styles.overallScoreRight}>
               {wmoInfo && (
                 <View style={styles.weatherConditionChip}>
                   <MaterialCommunityIcons name={wmoInfo.icon as any} size={16} color={colors.textPrimary} />
-                  <Text style={[styles.weatherConditionText, { color: colors.textPrimary }]}>{wmoInfo.description}</Text>
+                  <Text style={[styles.weatherConditionText, { color: colors.textPrimary }]}>{t(wmoInfo.descriptionKey)}</Text>
                 </View>
               )}
               <View style={[styles.scoreChip, { backgroundColor: scoreToColor(currentHourScore.score) }]}>
-                <Text style={styles.scoreChipText}>{scoreToLabel(currentHourScore.score)}</Text>
+                <Text style={styles.scoreChipText}>{t(scoreToLabel(currentHourScore.score))}</Text>
               </View>
             </View>
           </View>
@@ -245,13 +264,13 @@ export default function DayDetailScreen() {
 
           {/* Factor rows */}
           {currentHourScore.factorBreakdown.map((f) => (
-            <FactorRow key={f.factor} factor={f} colors={colors} units={units} warn120m={f.factor === 'Wind at 120m' && currentHourScore.warn120m} onWarnTap={() => setWarn120mTooltipVisible(true)} />
+            <FactorRow key={f.factor} factor={f} colors={colors} units={units} warn120m={f.factor === 'Wind at 120m' && currentHourScore.warn120m} onWarnTap={() => setWarn120mTooltipVisible(true)} t={t} />
           ))}
 
           {currentHourScore.blocked && currentHourScore.factorBreakdown.length === 0 && (
             <View style={styles.noFactorsNote}>
               <Text style={[styles.noFactorsText, { color: colors.textSecondary }]}>
-                Score calculation stopped due to blockers below.
+                {t('day.scoreStoppedDueToBlockers')}
               </Text>
             </View>
           )}
@@ -261,12 +280,12 @@ export default function DayDetailScreen() {
           {/* Blockers */}
           {currentHourScore.blocked ? (
             currentHourScore.blockerReasons.map((b, i) => (
-              <BlockerRow key={i} blocker={b} colors={colors} />
+              <BlockerRow key={i} blocker={b} colors={colors} t={t} />
             ))
           ) : (
             <View style={styles.noBlockerRow}>
               <MaterialCommunityIcons name="check-circle" size={16} color="#4CAF50" />
-              <Text style={[styles.noBlockerText, { color: colors.textSecondary }]}>No blockers active</Text>
+              <Text style={[styles.noBlockerText, { color: colors.textSecondary }]}>{t('day.noBlockers')}</Text>
             </View>
           )}
 
@@ -279,7 +298,7 @@ export default function DayDetailScreen() {
                 onPress={() => setShowCalcExplainer((v) => !v)}
               >
                 <Text style={[styles.explainerTitle, { color: colors.textSecondary }]}>
-                  How was this calculated?
+                  {t('day.howCalculated')}
                 </Text>
                 <MaterialCommunityIcons
                   name={showCalcExplainer ? 'chevron-up' : 'chevron-down'}
@@ -291,16 +310,16 @@ export default function DayDetailScreen() {
                 <View style={styles.explainerContent}>
                   {currentHourScore.factorBreakdown.map((f) => (
                     <View key={f.factor} style={styles.explainerRow}>
-                      <Text style={[styles.explainerFactor, { color: colors.textPrimary }]}>{f.factor}</Text>
+                      <Text style={[styles.explainerFactor, { color: colors.textPrimary }]}>{t(FACTOR_I18N_KEYS[f.factor] ?? f.factor)}</Text>
                       <Text style={[styles.explainerDetail, { color: colors.textSecondary }]}>
-                        sub-score {Math.round(f.subScore)} × {(f.weight * 100).toFixed(0)}% = {f.contribution.toFixed(1)}
+                        {t('day.subScoreDetail', { subScore: Math.round(f.subScore), weight: (f.weight * 100).toFixed(0), contribution: f.contribution.toFixed(1) })}
                       </Text>
                     </View>
                   ))}
                   <View style={[styles.divider, { backgroundColor: colors.border }]} />
                   <View style={[styles.explainerRow, { marginTop: 4 }]}>
                     <Text style={[styles.explainerFactor, { color: colors.textPrimary, fontWeight: '700' }]}>
-                      Total Score
+                      {t('day.totalScore')}
                     </Text>
                     <Text style={[styles.explainerFactor, { color: scoreToColor(currentHourScore.score), fontWeight: '700' }]}>
                       {currentHourScore.score}
@@ -319,7 +338,7 @@ export default function DayDetailScreen() {
           <View style={[styles.tooltipBox, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
             <MaterialCommunityIcons name="alert" size={20} color="#FFC107" />
             <Text style={[styles.tooltipText, { color: colors.textPrimary }]}>
-              Conditions at 120m are near the limit for this drone. Avoid flying at maximum altitude.
+              {t('day.warn120mTooltip')}
             </Text>
           </View>
         </TouchableOpacity>
@@ -341,12 +360,13 @@ function SunMarker({ y, label, icon, color, dashed }: { y: number; label: string
   );
 }
 
-function FactorRow({ factor, colors, units, warn120m, onWarnTap }: {
+function FactorRow({ factor, colors, units, warn120m, onWarnTap, t }: {
   factor: FactorScore;
   colors: any;
   units: any;
   warn120m: boolean;
   onWarnTap: () => void;
+  t: (key: string, opts?: any) => string;
 }) {
   const barFill = Math.round(factor.subScore);
 
@@ -366,7 +386,7 @@ function FactorRow({ factor, colors, units, warn120m, onWarnTap }: {
   return (
     <View style={styles.factorRow}>
       <Text style={[styles.factorName, { color: colors.textSecondary }]} numberOfLines={1}>
-        {factor.factor}
+        {t(FACTOR_I18N_KEYS[factor.factor] ?? factor.factor)}
       </Text>
       <Text style={[styles.factorValue, { color: colors.textPrimary }]} numberOfLines={1}>
         {displayValue()}
@@ -386,7 +406,7 @@ function FactorRow({ factor, colors, units, warn120m, onWarnTap }: {
   );
 }
 
-function BlockerRow({ blocker, colors }: { blocker: BlockerReason; colors: any }) {
+function BlockerRow({ blocker, colors, t }: { blocker: BlockerReason; colors: any; t: (key: string, opts?: any) => string }) {
   const isWmoCode = blocker.unit === 'WMO code';
   const wmoInfo = isWmoCode ? getWmoInfo(Math.round(blocker.rawValue)) : null;
 
@@ -395,13 +415,24 @@ function BlockerRow({ blocker, colors }: { blocker: BlockerReason; colors: any }
       <MaterialCommunityIcons name="cancel" size={14} color="#F44336" />
       {isWmoCode && wmoInfo ? (
         <View style={styles.blockerWmoContent}>
-          <Text style={[styles.blockerText, { color: '#F44336', flex: 0 }]}>BLOCKED: </Text>
+          <Text style={[styles.blockerText, { color: '#F44336', flex: 0 }]}>{t('day.blocked')} </Text>
           <MaterialCommunityIcons name={wmoInfo.icon as any} size={14} color="#F44336" />
-          <Text style={[styles.blockerText, { color: '#F44336' }]}>{wmoInfo.description}</Text>
+          <Text style={[styles.blockerText, { color: '#F44336' }]}>{t(wmoInfo.descriptionKey)}</Text>
         </View>
       ) : (
         <Text style={[styles.blockerText, { color: '#F44336' }]}>
-          BLOCKED: {blocker.factor} {blocker.rawValue.toFixed(1)}{blocker.unit} {blocker.threshold > 0 ? `(≥ ${blocker.threshold}${blocker.unit})` : ''}
+          {blocker.threshold > 0
+            ? t('day.blockerFormat', {
+                factor: t(FACTOR_I18N_KEYS[blocker.factor] ?? blocker.factor),
+                value: blocker.rawValue.toFixed(1),
+                unit: blocker.unit,
+                threshold: blocker.threshold,
+              })
+            : t('day.blockerFormatNoThreshold', {
+                factor: t(FACTOR_I18N_KEYS[blocker.factor] ?? blocker.factor),
+                value: blocker.rawValue.toFixed(1),
+                unit: blocker.unit,
+              })}
         </Text>
       )}
     </View>

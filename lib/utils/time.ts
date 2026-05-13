@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 /**
  * Returns the Monday of the week containing the given date.
  */
@@ -63,7 +65,7 @@ export function formatTime(date: Date): string {
  * Formats a date as "Wednesday, 18 March".
  */
 export function formatDateLong(date: Date): string {
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(i18n.language, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -74,7 +76,7 @@ export function formatDateLong(date: Date): string {
  * Formats a date as "Wed, Mar 18".
  */
 export function formatDateShort(date: Date): string {
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString(i18n.language, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -102,7 +104,7 @@ export function addDays(date: Date, days: number): Date {
  */
 export function formatCacheTime(ms: number): string {
   const d = new Date(ms);
-  return d.toLocaleString('en-GB', {
+  return d.toLocaleString(i18n.language, {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
